@@ -11,6 +11,7 @@ import Register from './pages/Register';
 import SocialFeed from './pages/SocialFeed'; // Nueva página
 import Dashboard from './pages/Dashboard';
 import MainLayout from './layouts/MainLayout';
+import Loading from './components/Loading';
 
 // Componente para rutas protegidas
 const ProtectedRoute = ({ children }) => {

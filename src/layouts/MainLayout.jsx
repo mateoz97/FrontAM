@@ -82,7 +82,7 @@ function MainLayout() {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [open, setOpen] = useState(false);
 
-  // CAMBIO: Función para obtener el nombre completo del usuario
+  // Función para obtener el nombre completo del usuario
   const getUserFullName = () => {
     if (user?.first_name && user?.last_name) {
       return `${user.first_name} ${user.last_name}`;
@@ -90,7 +90,7 @@ function MainLayout() {
     return user?.username || 'Usuario';
   };
 
-  // CAMBIO: Función para obtener la inicial del avatar
+  // Función para obtener la inicial del avatar
   const getAvatarInitial = () => {
     if (user?.first_name) {
       return user.first_name[0].toUpperCase();
@@ -238,18 +238,14 @@ function MainLayout() {
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             Control de Restaurante
           </Typography>
-          <Fade in={!open} timeout={300}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              {/* CAMBIO: Mostrar nombre completo en lugar de username */}
-              <Typography variant="body1" sx={{ display: { xs: 'none', sm: 'block' } }}>
-                {getUserFullName()}
-              </Typography>
-              {/* CAMBIO: Usar la inicial del nombre para el avatar */}
-              <Avatar sx={{ bgcolor: 'secondary.main' }}>
-                {getAvatarInitial()}
-              </Avatar>
-            </Box>
-          </Fade>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Typography variant="body1" sx={{ display: { xs: 'none', sm: 'block' } }}>
+              {getUserFullName()}
+            </Typography>
+            <Avatar sx={{ bgcolor: 'secondary.main' }}>
+              {getAvatarInitial()}
+            </Avatar>
+          </Box>
         </Toolbar>
       </AppBar>
 

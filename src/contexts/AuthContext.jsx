@@ -46,11 +46,13 @@ const AuthProvider = ({ children }) => {
   }, [activeBusinessId]);
 
   const login = async (credentials) => {
+    console.log('Login attempt with:', credentials);
     try {
       const data = await authService.login(credentials);
-      setUser(data.user);
-      if (data.user.business) {
-        setActiveBusinessId(data.user.business);
+      console.log('Login response:', data);
+      // CAMBIO: Asegurarnos de que el usuario se establece correctamente
+      if (data.user) {
+        setUser(data.user);
       }
       return data;
     } catch (error) {

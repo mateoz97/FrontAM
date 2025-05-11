@@ -19,28 +19,28 @@ import {
 const stats = [
   {
     title: 'Ventas del Día',
-    value: '$1,234',
+    value: '$0',
     icon: <MoneyIcon />,
     color: '#4CAF50',
-    trend: '+12%',
+    trend: '+0%',
   },
   {
     title: 'Pedidos',
-    value: '45',
+    value: '0',
     icon: <ReceiptIcon />,
     color: '#2196F3',
-    trend: '+8%',
+    trend: '+0%',
   },
   {
     title: 'Clientes',
-    value: '32',
+    value: '0',
     icon: <PeopleIcon />,
     color: '#FF9800',
-    trend: '+5%',
+    trend: '+0%',
   },
   {
     title: 'Productos',
-    value: '128',
+    value: '0',
     icon: <InventoryIcon />,
     color: '#9C27B0',
     trend: '0%',
@@ -110,7 +110,7 @@ function Dashboard() {
                 Pedidos Recientes
               </Typography>
               <Typography color="textSecondary">
-                Aquí irá la lista de pedidos recientes...
+                No hay pedidos recientes para mostrar.
               </Typography>
             </CardContent>
           </Card>
@@ -122,7 +122,7 @@ function Dashboard() {
                 Productos Más Vendidos
               </Typography>
               <Typography color="textSecondary">
-                Aquí irá la lista de productos más vendidos...
+                No hay productos para mostrar.
               </Typography>
             </CardContent>
           </Card>
