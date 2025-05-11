@@ -24,10 +24,38 @@ const postService = {
     }
   },
 
-  async createPost(postData) {
+  async createPost(data) {
     try {
-      console.log('Creating post with data:', postData);
-      const response = await api.post('/posts/', postData);
+      console.log('Creating post with data:', data);
+      
+      // Si data es FormData, no necesitamos configuración especial
+      // Si no, intentamos convertirlo a FormData
+      const isFormData = data instanceof FormData;
+      
+      const config = isFormData ? {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        }
+      } : {};
+      
+      // Si no es FormData, pero es un objeto con image o video, convertirlo
+      if (!isFormData && (data.image || data.video)) {
+        const formData = new FormData();
+        if (data.content) formData.append('content', data.content);
+        if (data.image) formData.append('image', data.image);
+        if (data.video) formData.append('video', data.video);
+        
+        const response = await api.post('/posts/', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          }
+        });
+        console.log('Post created successfully:', response.data);
+        return response.data;
+      }
+      
+      // Si no hay multimedia o ya es FormData
+      const response = await api.post('/posts/', data, config);
       console.log('Post created successfully:', response.data);
       return response.data;
     } catch (error) {
@@ -71,6 +99,18 @@ const postService = {
       console.error('Error fetching comments:', error.response?.data || error.message);
       // Devolver array vacío para evitar errores
       return [];
+    }
+  },
+  
+  async deletePost(postId) {
+    try {
+      console.log(`Deleting post ${postId}...`);
+      const response = await api.delete(`/posts/${postId}/`);
+      console.log('Delete response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting post:', error.response?.data || error.message);
+      throw error;
     }
   }
 };

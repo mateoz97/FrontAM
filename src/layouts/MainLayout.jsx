@@ -25,7 +25,7 @@ import {
   Menu as MenuIcon,
   Close as CloseIcon,
   Dashboard as DashboardIcon,
-  RssFeed as FeedIcon, // Aquí está el cambio: RssFeed en lugar de Feed
+  RssFeed as FeedIcon, // Usando RssFeed en lugar de Feed
   Receipt as ReceiptIcon,
   Inventory as InventoryIcon,
   People as PeopleIcon,
@@ -79,45 +79,6 @@ const UserInfo = styled(Box)(({ theme }) => ({
   margin: theme.spacing(2),
 }));
 
-const menuItems = [
-  { 
-    text: 'Dashboard', 
-    icon: <DashboardIcon />, 
-    path: '/dashboard',
-    description: 'Panel principal' 
-  },
-  { 
-    text: 'Feed', 
-    icon: <FeedIcon />, 
-    path: '/feed',
-    description: 'Publicaciones y novedades'
-  },
-  { 
-    text: 'Pedidos', 
-    icon: <ReceiptIcon />, 
-    path: '/orders',
-    description: 'Gestión de pedidos'
-  },
-  { 
-    text: 'Inventario', 
-    icon: <InventoryIcon />, 
-    path: '/inventory',
-    description: 'Gestión de productos'
-  },
-  { 
-    text: 'Usuarios', 
-    icon: <PeopleIcon />, 
-    path: '/users',
-    description: 'Gestión de usuarios'
-  },
-  { 
-    text: 'Configuración', 
-    icon: <SettingsIcon />, 
-    path: '/settings',
-    description: 'Ajustes del sistema'
-  },
-];
-
 function MainLayout() {
   const theme = useTheme();
   const navigate = useNavigate();
@@ -129,6 +90,63 @@ function MainLayout() {
   // Obtener información del negocio y rol del usuario
   const businessInfo = getUserBusiness();
   const roleInfo = getUserRole();
+
+  // Función para generar elementos del menú basados en el estado del usuario
+  const getMenuItems = () => {
+    const items = [
+      { 
+        text: 'Feed', 
+        icon: <FeedIcon />, 
+        path: '/',
+        description: 'Publicaciones y novedades',
+        alwaysShow: true // Siempre se muestra
+      }
+    ];
+    
+    // Solo añadir estos elementos si el usuario tiene un negocio
+    if (businessInfo) {
+      items.push(
+        { 
+          text: 'Dashboard', 
+          icon: <DashboardIcon />, 
+          path: '/dashboard',
+          description: 'Panel principal'
+        },
+        { 
+          text: 'Pedidos', 
+          icon: <ReceiptIcon />, 
+          path: '/orders',
+          description: 'Gestión de pedidos'
+        },
+        { 
+          text: 'Inventario', 
+          icon: <InventoryIcon />, 
+          path: '/inventory',
+          description: 'Gestión de productos'
+        }
+      );
+    }
+    
+    // Estos ítems siempre se muestran
+    items.push(
+      { 
+        text: 'Usuarios', 
+        icon: <PeopleIcon />, 
+        path: '/users',
+        description: 'Gestión de usuarios'
+      },
+      { 
+        text: 'Configuración', 
+        icon: <SettingsIcon />, 
+        path: '/settings',
+        description: 'Ajustes del sistema'
+      }
+    );
+    
+    return items;
+  };
+
+  const menuItems = getMenuItems();
 
   const getUserFullName = () => {
     if (user?.first_name && user?.last_name) {
@@ -169,7 +187,7 @@ function MainLayout() {
       <DrawerHeader>
         <Fade in={open} timeout={300}>
           <Typography variant="h6" noWrap component="div" fontWeight="bold">
-            {businessInfo?.name || 'Mi Restaurante'}
+            {businessInfo?.name || 'Mi Aplicación'}
           </Typography>
         </Fade>
         <IconButton onClick={handleDrawerClose}>
@@ -339,18 +357,25 @@ function MainLayout() {
           
           {/* Botones de navegación rápida */}
           <Box sx={{ display: { xs: 'none', md: 'flex' }, mr: 3 }}>
-            <Button 
-              color="inherit" 
-              startIcon={<DashboardIcon />}
-              onClick={() => navigate('/dashboard')}
-              sx={{ mr: 1 }}
-            >
-              Dashboard
-            </Button>
+            {/* Mostrar Dashboard solo si el usuario tiene un negocio */}
+            {businessInfo && (
+              <Button 
+                color="inherit" 
+                startIcon={<DashboardIcon />}
+                onClick={() => navigate('/dashboard')}
+                sx={{ mr: 1 }}
+              >
+                Dashboard
+              </Button>
+            )}
             <Button 
               color="inherit" 
               startIcon={<FeedIcon />}
-              onClick={() => navigate('/feed')}
+              onClick={() => navigate('/')}
+              sx={{ 
+                fontWeight: location.pathname === '/' ? 'bold' : 'normal',
+                textDecoration: location.pathname === '/' ? 'underline' : 'none'
+              }}
             >
               Feed
             </Button>
