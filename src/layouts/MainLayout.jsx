@@ -18,6 +18,7 @@ import {
   useMediaQuery,
   Fade,
   Collapse,
+  Chip,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -29,6 +30,8 @@ import {
   Settings as SettingsIcon,
   Logout as LogoutIcon,
   ChevronLeft as ChevronLeftIcon,
+  Business as BusinessIcon,
+  Badge as BadgeIcon,
 } from '@mui/icons-material';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -66,23 +69,36 @@ const DrawerHeader = styled('div')(({ theme }) => ({
   justifyContent: 'space-between',
 }));
 
+// Componente para mostrar información de usuario
+const UserInfo = styled(Box)(({ theme }) => ({
+  padding: theme.spacing(2),
+  backgroundColor: theme.palette.grey[50],
+  borderRadius: theme.shape.borderRadius,
+  margin: theme.spacing(2),
+}));
+
 const menuItems = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
+  // { text: 'Feed', icon: <FeedIcon />, path: '/feed' },
   { text: 'Pedidos', icon: <ReceiptIcon />, path: '/orders' },
   { text: 'Inventario', icon: <InventoryIcon />, path: '/inventory' },
   { text: 'Usuarios', icon: <PeopleIcon />, path: '/users' },
   { text: 'Configuración', icon: <SettingsIcon />, path: '/settings' },
 ];
 
+
 function MainLayout() {
   const theme = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { user, logout, getUserBusiness, getUserRole } = useAuth();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [open, setOpen] = useState(false);
 
-  // Función para obtener el nombre completo del usuario
+  // Obtener información del negocio y rol del usuario
+  const businessInfo = getUserBusiness();
+  const roleInfo = getUserRole();
+
   const getUserFullName = () => {
     if (user?.first_name && user?.last_name) {
       return `${user.first_name} ${user.last_name}`;
@@ -90,7 +106,6 @@ function MainLayout() {
     return user?.username || 'Usuario';
   };
 
-  // Función para obtener la inicial del avatar
   const getAvatarInitial = () => {
     if (user?.first_name) {
       return user.first_name[0].toUpperCase();
@@ -123,13 +138,58 @@ function MainLayout() {
       <DrawerHeader>
         <Fade in={open} timeout={300}>
           <Typography variant="h6" noWrap component="div" fontWeight="bold">
-            Mi Restaurante
+            {businessInfo?.name || 'Mi Restaurante'}
           </Typography>
         </Fade>
         <IconButton onClick={handleDrawerClose}>
           <ChevronLeftIcon />
         </IconButton>
       </DrawerHeader>
+      <Divider />
+      
+      {/* Información del usuario */}
+      {open && (
+        <UserInfo>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+            <Avatar sx={{ bgcolor: 'primary.main', mr: 1 }}>
+              {getAvatarInitial()}
+            </Avatar>
+            <Box>
+              <Typography variant="subtitle1" fontWeight="bold">
+                {getUserFullName()}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {user?.email}
+              </Typography>
+            </Box>
+          </Box>
+          
+          {/* Mostrar negocio y rol */}
+          <Box sx={{ mt: 2 }}>
+            {businessInfo && (
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                <BusinessIcon sx={{ mr: 1, fontSize: 20, color: 'text.secondary' }} />
+                <Typography variant="body2" color="text.secondary">
+                  {businessInfo.name}
+                </Typography>
+              </Box>
+            )}
+            
+            {roleInfo && (
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <BadgeIcon sx={{ mr: 1, fontSize: 20, color: 'text.secondary' }} />
+                <Chip 
+                  label={roleInfo.name} 
+                  size="small" 
+                  color="primary"
+                  variant="outlined"
+                />
+              </Box>
+            )}
+          </Box>
+        </UserInfo>
+      )}
+      
       <Divider />
       <List>
         {menuItems.map((item, index) => (
@@ -238,14 +298,34 @@ function MainLayout() {
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             Control de Restaurante
           </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Typography variant="body1" sx={{ display: { xs: 'none', sm: 'block' } }}>
-              {getUserFullName()}
-            </Typography>
-            <Avatar sx={{ bgcolor: 'secondary.main' }}>
-              {getAvatarInitial()}
-            </Avatar>
-          </Box>
+          <Fade in={!open} timeout={300}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              {/* Mostrar información de negocio y rol en el header */}
+              {businessInfo && (
+                <Chip 
+                  icon={<BusinessIcon />}
+                  label={businessInfo.name}
+                  color="primary"
+                  variant="outlined"
+                  sx={{ display: { xs: 'none', sm: 'flex' } }}
+                />
+              )}
+              {roleInfo && (
+                <Chip 
+                  icon={<BadgeIcon />}
+                  label={roleInfo.name}
+                  size="small"
+                  sx={{ display: { xs: 'none', sm: 'flex' } }}
+                />
+              )}
+              <Typography variant="body1" sx={{ display: { xs: 'none', sm: 'block' } }}>
+                {getUserFullName()}
+              </Typography>
+              <Avatar sx={{ bgcolor: 'secondary.main' }}>
+                {getAvatarInitial()}
+              </Avatar>
+            </Box>
+          </Fade>
         </Toolbar>
       </AppBar>
 

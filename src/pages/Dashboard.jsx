@@ -7,6 +7,8 @@ import {
   CardContent,
   Typography,
   Avatar,
+  Paper,
+  Chip,
 } from '@mui/material';
 import {
   AttachMoney as MoneyIcon,
@@ -14,33 +16,36 @@ import {
   People as PeopleIcon,
   Inventory as InventoryIcon,
   TrendingUp as TrendingUpIcon,
+  Business as BusinessIcon,
+  Badge as BadgeIcon,
 } from '@mui/icons-material';
+import { useAuth } from '../contexts/AuthContext';
 
 const stats = [
   {
     title: 'Ventas del Día',
-    value: '$0',
+    value: '$1,234',
     icon: <MoneyIcon />,
     color: '#4CAF50',
-    trend: '+0%',
+    trend: '+12%',
   },
   {
     title: 'Pedidos',
-    value: '0',
+    value: '45',
     icon: <ReceiptIcon />,
     color: '#2196F3',
-    trend: '+0%',
+    trend: '+8%',
   },
   {
     title: 'Clientes',
-    value: '0',
+    value: '32',
     icon: <PeopleIcon />,
     color: '#FF9800',
-    trend: '+0%',
+    trend: '+5%',
   },
   {
     title: 'Productos',
-    value: '0',
+    value: '128',
     icon: <InventoryIcon />,
     color: '#9C27B0',
     trend: '0%',
@@ -48,11 +53,48 @@ const stats = [
 ];
 
 function Dashboard() {
+  const { user, getUserBusiness, getUserRole } = useAuth();
+  const businessInfo = getUserBusiness();
+  const roleInfo = getUserRole();
+
   return (
     <Box>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Dashboard
-      </Typography>
+      {/* Header con información del usuario */}
+      <Paper elevation={2} sx={{ p: 3, mb: 4, borderRadius: 2 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box>
+            <Typography variant="h4" component="h1" gutterBottom>
+              Bienvenido, {user?.first_name || user?.username}!
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
+              {businessInfo && (
+                <Chip
+                  icon={<BusinessIcon />}
+                  label={businessInfo.name}
+                  color="primary"
+                  variant="outlined"
+                />
+              )}
+              {roleInfo && (
+                <Chip
+                  icon={<BadgeIcon />}
+                  label={roleInfo.name}
+                  color="secondary"
+                />
+              )}
+            </Box>
+          </Box>
+          
+          {businessInfo && businessInfo.is_owner && (
+            <Chip
+              label="Propietario"
+              color="success"
+              size="large"
+              sx={{ fontWeight: 'bold' }}
+            />
+          )}
+        </Box>
+      </Paper>
       
       <Grid container spacing={3} sx={{ mb: 4 }}>
         {stats.map((stat) => (
@@ -110,7 +152,7 @@ function Dashboard() {
                 Pedidos Recientes
               </Typography>
               <Typography color="textSecondary">
-                No hay pedidos recientes para mostrar.
+                Aquí irá la lista de pedidos recientes...
               </Typography>
             </CardContent>
           </Card>
@@ -122,12 +164,33 @@ function Dashboard() {
                 Productos Más Vendidos
               </Typography>
               <Typography color="textSecondary">
-                No hay productos para mostrar.
+                Aquí irá la lista de productos más vendidos...
               </Typography>
             </CardContent>
           </Card>
         </Grid>
       </Grid>
+      
+      {/* Información de permisos del usuario (útil para desarrollo) */}
+      {roleInfo && roleInfo.permissions && (
+        <Box sx={{ mt: 4 }}>
+          <Typography variant="h6" gutterBottom>
+            Permisos de tu rol ({roleInfo.name})
+          </Typography>
+          <Grid container spacing={2}>
+            {Object.entries(roleInfo.permissions).map(([permission, hasPermission]) => (
+              <Grid item xs={12} sm={6} md={4} key={permission}>
+                <Chip
+                  label={permission.replace('can_', '').replace(/_/g, ' ')}
+                  color={hasPermission ? "success" : "default"}
+                  variant={hasPermission ? "filled" : "outlined"}
+                  sx={{ width: '100%', justifyContent: 'flex-start' }}
+                />
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
+      )}
     </Box>
   );
 }

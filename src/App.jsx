@@ -8,10 +8,9 @@ import theme from './styles/theme';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import SocialFeed from './pages/SocialFeed'; // Nueva página
 import Dashboard from './pages/Dashboard';
+import Feed from './pages/Feed';
 import MainLayout from './layouts/MainLayout';
-import Loading from './components/Loading';
 
 // Componente para rutas protegidas
 const ProtectedRoute = ({ children }) => {
@@ -33,7 +32,7 @@ const PublicRoute = ({ children }) => {
   const { isAuthenticated } = useAuth();
   
   if (isAuthenticated) {
-    return <Navigate to="/feed" />; // Cambiamos a /feed como página principal
+    return <Navigate to="/dashboard" />;
   }
   
   return children;
@@ -63,28 +62,22 @@ function App() {
               } 
             />
             <Route
-              path="/feed"
-              element={
-                <ProtectedRoute>
-                  <SocialFeed />
-                </ProtectedRoute>
-              }
-            />
-            <Route
               element={
                 <ProtectedRoute>
                   <MainLayout />
                 </ProtectedRoute>
               }
             >
-              <Route path="/dashboard/:businessId" element={<Dashboard />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/feed" element={<Feed />} />
+              <Route path="/" element={<Navigate to="/dashboard" />} />
+              {/* Aquí puedes agregar más rutas protegidas */}
               <Route path="/orders" element={<div>Pedidos</div>} />
               <Route path="/inventory" element={<div>Inventario</div>} />
               <Route path="/users" element={<div>Usuarios</div>} />
               <Route path="/settings" element={<div>Configuración</div>} />
             </Route>
-            <Route path="/" element={<Navigate to="/feed" />} />
-            <Route path="*" element={<Navigate to="/feed" />} />
+            <Route path="*" element={<Navigate to="/dashboard" />} />
           </Routes>
         </AuthProvider>
       </Router>

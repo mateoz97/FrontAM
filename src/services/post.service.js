@@ -2,14 +2,9 @@
 import api from './api';
 
 const postService = {
-  async getFeedPosts() {
-    try {
-      const response = await api.get('/posts/feed/');
-      return response.data;
-    } catch (error) {
-      console.error('Error getting feed posts:', error);
-      return [];
-    }
+  async getFeed() {
+    const response = await api.get('/posts/feed/');
+    return response.data;
   },
 
   async createPost(postData) {
@@ -22,8 +17,13 @@ const postService = {
     return response.data;
   },
 
-  async commentPost(postId, comment) {
-    const response = await api.post(`/posts/${postId}/comment/`, { comment });
+  async commentPost(postId, content) {
+    const response = await api.post(`/posts/${postId}/comment/`, { content });
+    return response.data;
+  },
+
+  async getComments(postId) {
+    const response = await api.get(`/posts/${postId}/comments/`);
     return response.data;
   }
 };

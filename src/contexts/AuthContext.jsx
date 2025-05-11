@@ -15,19 +15,14 @@ const useAuth = () => {
 const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeBusinessId, setActiveBusinessId] = useState(null);
 
   useEffect(() => {
-    const checkAuth = async () => {
+    const checkAuth = () => {
+      console.log('Checking authentication...');
       try {
         const currentUser = authService.getCurrentUser();
-        if (currentUser) {
-          setUser(currentUser);
-          // Si el usuario tiene un negocio, establecerlo como activo
-          if (currentUser.business) {
-            setActiveBusinessId(currentUser.business);
-          }
-        }
+        console.log('Current user:', currentUser);
+        setUser(currentUser);
       } catch (error) {
         console.error('Auth check error:', error);
       } finally {
@@ -38,22 +33,12 @@ const AuthProvider = ({ children }) => {
     checkAuth();
   }, []);
 
-  useEffect(() => {
-    // Guardar el negocio activo en localStorage
-    if (activeBusinessId) {
-      localStorage.setItem('activeBusinessId', activeBusinessId);
-    }
-  }, [activeBusinessId]);
-
   const login = async (credentials) => {
     console.log('Login attempt with:', credentials);
     try {
       const data = await authService.login(credentials);
       console.log('Login response:', data);
-      // CAMBIO: Asegurarnos de que el usuario se establece correctamente
-      if (data.user) {
-        setUser(data.user);
-      }
+      setUser(data.user);
       return data;
     } catch (error) {
       console.error('Login error:', error);
@@ -62,8 +47,10 @@ const AuthProvider = ({ children }) => {
   };
 
   const register = async (userData) => {
+    console.log('Register attempt with:', userData);
     try {
       const data = await authService.register(userData);
+      console.log('Register response:', data);
       setUser(data.user);
       return data;
     } catch (error) {
@@ -73,14 +60,29 @@ const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    console.log('Logout');
     authService.logout();
     setUser(null);
-    setActiveBusinessId(null);
-    localStorage.removeItem('activeBusinessId');
   };
 
-  const switchBusiness = (businessId) => {
-    setActiveBusinessId(businessId);
+  const updateUser = (userData) => {
+    setUser(userData);
+    localStorage.setItem('user', JSON.stringify(userData));
+  };
+
+  // Nuevas funciones para acceder a información específica
+  const getUserBusiness = () => {
+    return user?.business_info || null;
+  };
+
+  const getUserRole = () => {
+    return user?.role_info || null;
+  };
+
+  const hasPermission = (permission) => {
+    const roleInfo = getUserRole();
+    if (!roleInfo || !roleInfo.permissions) return false;
+    return roleInfo.permissions[permission] || false;
   };
 
   const value = {
@@ -90,9 +92,13 @@ const AuthProvider = ({ children }) => {
     logout,
     loading,
     isAuthenticated: !!user,
-    activeBusinessId,
-    switchBusiness
+    updateUser,
+    getUserBusiness,
+    getUserRole,
+    hasPermission
   };
+
+  console.log('AuthContext value:', value);
 
   return (
     <AuthContext.Provider value={value}>
@@ -101,5 +107,6 @@ const AuthProvider = ({ children }) => {
   );
 };
 
+// Exports nombrados
 export { AuthProvider, useAuth };
 export default AuthContext;
