@@ -1,3 +1,4 @@
+// src/contexts/AuthContext.jsx
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import authService from '../services/auth.service';
 
@@ -64,13 +65,37 @@ const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
+  const updateUser = (userData) => {
+    setUser(userData);
+    localStorage.setItem('user', JSON.stringify(userData));
+  };
+
+  // Nuevas funciones para acceder a información específica
+  const getUserBusiness = () => {
+    return user?.business_info || null;
+  };
+
+  const getUserRole = () => {
+    return user?.role_info || null;
+  };
+
+  const hasPermission = (permission) => {
+    const roleInfo = getUserRole();
+    if (!roleInfo || !roleInfo.permissions) return false;
+    return roleInfo.permissions[permission] || false;
+  };
+
   const value = {
     user,
     login,
     register,
     logout,
     loading,
-    isAuthenticated: !!user
+    isAuthenticated: !!user,
+    updateUser,
+    getUserBusiness,
+    getUserRole,
+    hasPermission
   };
 
   console.log('AuthContext value:', value);

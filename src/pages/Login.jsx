@@ -58,7 +58,7 @@ const Login = () => {
         username: formData.identifier,
         password: formData.password
       });
-      navigate('/dashboard');
+      navigate('/feed');
     } catch (err) {
       setError(err.response?.data?.detail || 'Error al iniciar sesión');
     } finally {

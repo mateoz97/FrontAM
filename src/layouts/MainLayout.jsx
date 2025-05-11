@@ -18,17 +18,22 @@ import {
   useMediaQuery,
   Fade,
   Collapse,
+  Chip,
+  Button,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
   Close as CloseIcon,
   Dashboard as DashboardIcon,
+  RssFeed as FeedIcon, // Usando RssFeed en lugar de Feed
   Receipt as ReceiptIcon,
   Inventory as InventoryIcon,
   People as PeopleIcon,
   Settings as SettingsIcon,
   Logout as LogoutIcon,
   ChevronLeft as ChevronLeftIcon,
+  Business as BusinessIcon,
+  Badge as BadgeIcon,
 } from '@mui/icons-material';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -66,23 +71,83 @@ const DrawerHeader = styled('div')(({ theme }) => ({
   justifyContent: 'space-between',
 }));
 
-const menuItems = [
-  { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
-  { text: 'Pedidos', icon: <ReceiptIcon />, path: '/orders' },
-  { text: 'Inventario', icon: <InventoryIcon />, path: '/inventory' },
-  { text: 'Usuarios', icon: <PeopleIcon />, path: '/users' },
-  { text: 'Configuración', icon: <SettingsIcon />, path: '/settings' },
-];
+// Componente para mostrar información de usuario
+const UserInfo = styled(Box)(({ theme }) => ({
+  padding: theme.spacing(2),
+  backgroundColor: theme.palette.grey[50],
+  borderRadius: theme.shape.borderRadius,
+  margin: theme.spacing(2),
+}));
 
 function MainLayout() {
   const theme = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { user, logout, getUserBusiness, getUserRole } = useAuth();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [open, setOpen] = useState(false);
 
-  // CAMBIO: Función para obtener el nombre completo del usuario
+  // Obtener información del negocio y rol del usuario
+  const businessInfo = getUserBusiness();
+  const roleInfo = getUserRole();
+
+  // Función para generar elementos del menú basados en el estado del usuario
+  const getMenuItems = () => {
+    const items = [
+      { 
+        text: 'Feed', 
+        icon: <FeedIcon />, 
+        path: '/',
+        description: 'Publicaciones y novedades',
+        alwaysShow: true // Siempre se muestra
+      }
+    ];
+    
+    // Solo añadir estos elementos si el usuario tiene un negocio
+    if (businessInfo) {
+      items.push(
+        { 
+          text: 'Dashboard', 
+          icon: <DashboardIcon />, 
+          path: '/dashboard',
+          description: 'Panel principal'
+        },
+        { 
+          text: 'Pedidos', 
+          icon: <ReceiptIcon />, 
+          path: '/orders',
+          description: 'Gestión de pedidos'
+        },
+        { 
+          text: 'Inventario', 
+          icon: <InventoryIcon />, 
+          path: '/inventory',
+          description: 'Gestión de productos'
+        }
+      );
+    }
+    
+    // Estos ítems siempre se muestran
+    items.push(
+      { 
+        text: 'Usuarios', 
+        icon: <PeopleIcon />, 
+        path: '/users',
+        description: 'Gestión de usuarios'
+      },
+      { 
+        text: 'Configuración', 
+        icon: <SettingsIcon />, 
+        path: '/settings',
+        description: 'Ajustes del sistema'
+      }
+    );
+    
+    return items;
+  };
+
+  const menuItems = getMenuItems();
+
   const getUserFullName = () => {
     if (user?.first_name && user?.last_name) {
       return `${user.first_name} ${user.last_name}`;
@@ -90,7 +155,6 @@ function MainLayout() {
     return user?.username || 'Usuario';
   };
 
-  // CAMBIO: Función para obtener la inicial del avatar
   const getAvatarInitial = () => {
     if (user?.first_name) {
       return user.first_name[0].toUpperCase();
@@ -123,13 +187,58 @@ function MainLayout() {
       <DrawerHeader>
         <Fade in={open} timeout={300}>
           <Typography variant="h6" noWrap component="div" fontWeight="bold">
-            Mi Restaurante
+            {businessInfo?.name || 'Mi Aplicación'}
           </Typography>
         </Fade>
         <IconButton onClick={handleDrawerClose}>
           <ChevronLeftIcon />
         </IconButton>
       </DrawerHeader>
+      <Divider />
+      
+      {/* Información del usuario */}
+      {open && (
+        <UserInfo>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+            <Avatar sx={{ bgcolor: 'primary.main', mr: 1 }}>
+              {getAvatarInitial()}
+            </Avatar>
+            <Box>
+              <Typography variant="subtitle1" fontWeight="bold">
+                {getUserFullName()}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {user?.email}
+              </Typography>
+            </Box>
+          </Box>
+          
+          {/* Mostrar negocio y rol */}
+          <Box sx={{ mt: 2 }}>
+            {businessInfo && (
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                <BusinessIcon sx={{ mr: 1, fontSize: 20, color: 'text.secondary' }} />
+                <Typography variant="body2" color="text.secondary">
+                  {businessInfo.name}
+                </Typography>
+              </Box>
+            )}
+            
+            {roleInfo && (
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <BadgeIcon sx={{ mr: 1, fontSize: 20, color: 'text.secondary' }} />
+                <Chip 
+                  label={roleInfo.name} 
+                  size="small" 
+                  color="primary"
+                  variant="outlined"
+                />
+              </Box>
+            )}
+          </Box>
+        </UserInfo>
+      )}
+      
       <Divider />
       <List>
         {menuItems.map((item, index) => (
@@ -171,13 +280,20 @@ function MainLayout() {
                 >
                   {item.icon}
                 </ListItemIcon>
-                <ListItemText 
-                  primary={item.text} 
-                  primaryTypographyProps={{
-                    fontSize: '0.95rem',
-                    fontWeight: location.pathname === item.path ? 'bold' : 'medium',
-                  }}
-                />
+                <Box>
+                  <ListItemText 
+                    primary={item.text} 
+                    primaryTypographyProps={{
+                      fontSize: '0.95rem',
+                      fontWeight: location.pathname === item.path ? 'bold' : 'medium',
+                    }}
+                  />
+                  {item.description && (
+                    <Typography variant="caption" color="text.secondary">
+                      {item.description}
+                    </Typography>
+                  )}
+                </Box>
               </ListItemButton>
             </ListItem>
           </Collapse>
@@ -238,13 +354,56 @@ function MainLayout() {
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             Control de Restaurante
           </Typography>
+          
+          {/* Botones de navegación rápida */}
+          <Box sx={{ display: { xs: 'none', md: 'flex' }, mr: 3 }}>
+            {/* Mostrar Dashboard solo si el usuario tiene un negocio */}
+            {businessInfo && (
+              <Button 
+                color="inherit" 
+                startIcon={<DashboardIcon />}
+                onClick={() => navigate('/dashboard')}
+                sx={{ mr: 1 }}
+              >
+                Dashboard
+              </Button>
+            )}
+            <Button 
+              color="inherit" 
+              startIcon={<FeedIcon />}
+              onClick={() => navigate('/')}
+              sx={{ 
+                fontWeight: location.pathname === '/' ? 'bold' : 'normal',
+                textDecoration: location.pathname === '/' ? 'underline' : 'none'
+              }}
+            >
+              Feed
+            </Button>
+          </Box>
+          
           <Fade in={!open} timeout={300}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              {/* CAMBIO: Mostrar nombre completo en lugar de username */}
+              {/* Mostrar información de negocio y rol en el header */}
+              {businessInfo && (
+                <Chip 
+                  icon={<BusinessIcon />}
+                  label={businessInfo.name}
+                  color="primary"
+                  variant="outlined"
+                  sx={{ display: { xs: 'none', sm: 'flex' } }}
+                />
+              )}
+              {roleInfo && (
+                <Chip 
+                  icon={<BadgeIcon />}
+                  label={roleInfo.name}
+                  size="small"
+                  sx={{ display: { xs: 'none', sm: 'flex' } }}
+                />
+              )}
               <Typography variant="body1" sx={{ display: { xs: 'none', sm: 'block' } }}>
                 {getUserFullName()}
               </Typography>
-              {/* CAMBIO: Usar la inicial del nombre para el avatar */}
               <Avatar sx={{ bgcolor: 'secondary.main' }}>
                 {getAvatarInitial()}
               </Avatar>

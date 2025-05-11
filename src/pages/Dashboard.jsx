@@ -1,5 +1,6 @@
 // src/pages/Dashboard.jsx
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Grid,
@@ -7,6 +8,9 @@ import {
   CardContent,
   Typography,
   Avatar,
+  Paper,
+  Chip,
+  Button,
 } from '@mui/material';
 import {
   AttachMoney as MoneyIcon,
@@ -14,7 +18,11 @@ import {
   People as PeopleIcon,
   Inventory as InventoryIcon,
   TrendingUp as TrendingUpIcon,
+  Business as BusinessIcon,
+  Badge as BadgeIcon,
+  RssFeed as FeedIcon, // Aquí está el cambio: RssFeed en lugar de Feed
 } from '@mui/icons-material';
+import { useAuth } from '../contexts/AuthContext';
 
 const stats = [
   {
@@ -48,11 +56,49 @@ const stats = [
 ];
 
 function Dashboard() {
+  const navigate = useNavigate();
+  const { user, getUserBusiness, getUserRole } = useAuth();
+  const businessInfo = getUserBusiness();
+  const roleInfo = getUserRole();
+
   return (
     <Box>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Dashboard
-      </Typography>
+      {/* Header con información del usuario */}
+      <Paper elevation={2} sx={{ p: 3, mb: 4, borderRadius: 2 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box>
+            <Typography variant="h4" component="h1" gutterBottom>
+              Bienvenido, {user?.first_name || user?.username}!
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
+              {businessInfo && (
+                <Chip
+                  icon={<BusinessIcon />}
+                  label={businessInfo.name}
+                  color="primary"
+                  variant="outlined"
+                />
+              )}
+              {roleInfo && (
+                <Chip
+                  icon={<BadgeIcon />}
+                  label={roleInfo.name}
+                  color="secondary"
+                />
+              )}
+            </Box>
+          </Box>
+          
+          {businessInfo && businessInfo.is_owner && (
+            <Chip
+              label="Propietario"
+              color="success"
+              size="large"
+              sx={{ fontWeight: 'bold' }}
+            />
+          )}
+        </Box>
+      </Paper>
       
       <Grid container spacing={3} sx={{ mb: 4 }}>
         {stats.map((stat) => (
@@ -128,6 +174,44 @@ function Dashboard() {
           </Card>
         </Grid>
       </Grid>
+      
+      {/* Información de permisos del usuario (útil para desarrollo) */}
+      {roleInfo && roleInfo.permissions && (
+        <Box sx={{ mt: 4 }}>
+          <Typography variant="h6" gutterBottom>
+            Permisos de tu rol ({roleInfo.name})
+          </Typography>
+          <Grid container spacing={2}>
+            {Object.entries(roleInfo.permissions).map(([permission, hasPermission]) => (
+              <Grid item xs={12} sm={6} md={4} key={permission}>
+                <Chip
+                  label={permission.replace('can_', '').replace(/_/g, ' ')}
+                  color={hasPermission ? "success" : "default"}
+                  variant={hasPermission ? "filled" : "outlined"}
+                  sx={{ width: '100%', justifyContent: 'flex-start' }}
+                />
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
+      )}
+
+      {/* Botón para ir al Feed */}
+      <Box sx={{ mt: 4, textAlign: 'center' }}>
+        <Typography variant="h6" gutterBottom>
+          ¿Quieres ver las últimas publicaciones?
+        </Typography>
+        <Button 
+          variant="contained" 
+          color="primary" 
+          size="large"
+          startIcon={<FeedIcon />}
+          onClick={() => navigate('/feed')}
+          sx={{ mt: 2 }}
+        >
+          Ir al Feed
+        </Button>
+      </Box>
     </Box>
   );
 }

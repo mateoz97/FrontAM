@@ -1,13 +1,21 @@
+// src/services/auth.service.js
 import api from './api';
 
 const authService = {
   async login(credentials) {
-    // CAMBIO 4: Verificamos el backend Django para login personalizado
-    const response = await api.post('/accounts/login/', credentials);
+    // Actualizar el login para usar el formato correcto
+    const response = await api.post('/accounts/login/', {
+      identifier: credentials.username,
+      password: credentials.password
+    });
+    
     if (response.data.access) {
       localStorage.setItem('token', response.data.access);
       localStorage.setItem('refreshToken', response.data.refresh);
       localStorage.setItem('user', JSON.stringify(response.data.user));
+      
+      // Configurar el token en los headers de axios
+      api.defaults.headers.common['Authorization'] = `Bearer ${response.data.access}`;
     }
     return response.data;
   },
@@ -25,6 +33,9 @@ const authService = {
       localStorage.setItem('token', response.data.access);
       localStorage.setItem('refreshToken', response.data.refresh);
       localStorage.setItem('user', JSON.stringify(response.data.user));
+      
+      // Configurar el token en los headers de axios
+      api.defaults.headers.common['Authorization'] = `Bearer ${response.data.access}`;
     }
     return response.data;
   },
@@ -48,10 +59,19 @@ const authService = {
     return response.data;
   },
 
+  async getUserInfo() {
+    const response = await api.get('/accounts/user-info/');
+    if (response.data) {
+      localStorage.setItem('user', JSON.stringify(response.data));
+    }
+    return response.data;
+  },
+
   logout() {
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
+    delete api.defaults.headers.common['Authorization'];
   },
 
   getCurrentUser() {
