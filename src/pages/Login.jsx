@@ -34,7 +34,8 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
-    email: '',
+    // CAMBIO 1: Cambiamos 'email' por 'identifier' para aceptar username o email
+    identifier: '',
     password: ''
   });
 
@@ -52,8 +53,9 @@ const Login = () => {
     setError('');
 
     try {
+      // CAMBIO 2: Ahora pasamos el identifier que puede ser username o email
       await login({
-        username: formData.email,
+        username: formData.identifier,
         password: formData.password
       });
       navigate('/dashboard');
@@ -114,12 +116,13 @@ const Login = () => {
             </Grow>
           )}
 
+          {/* CAMBIO 3: Actualizamos el label y name del TextField */}
           <TextField
             fullWidth
-            label="Correo electrónico"
-            name="email"
-            type="email"
-            value={formData.email}
+            label="Usuario o Correo electrónico"
+            name="identifier"
+            type="text"
+            value={formData.identifier}
             onChange={handleChange}
             margin="normal"
             required

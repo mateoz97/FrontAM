@@ -10,6 +10,7 @@ import { useAuth } from '../contexts/AuthContext';
 import PersonalInfoStep from '../components/Register/PersonalInfoStep';
 import UserTypeStep from '../components/Register/UserTypeStep';
 import BusinessConfigStep from '../components/Register/BusinessConfigStep';
+import authService from '../services/auth.service';
 
 const steps = ['Datos personales', 'Tipo de usuario', 'Configuración'];
 
@@ -48,11 +49,35 @@ const Register = () => {
     });
   };
 
-  const handleRegister = async () => {
+  // CAMBIO 1: Simplemente avanza al siguiente paso sin crear el usuario
+  const handlePersonalInfoNext = () => {
+    // Validación básica
+    if (!formData.username || !formData.email || !formData.password || !formData.firstName || !formData.lastName) {
+      setError('Por favor completa todos los campos');
+      return;
+    }
+    
+    if (formData.password !== formData.confirmPassword) {
+      setError('Las contraseñas no coinciden');
+      return;
+    }
+    
+    setError('');
+    handleNext();
+  };
+
+  const handleUserTypeSelection = (type) => {
+    setUserType(type);
+    handleNext();
+  };
+
+  // CAMBIO 2: Función que maneja el registro completo al final
+  const handleCompleteRegistration = async () => {
     setLoading(true);
     setError('');
     
     try {
+      // 1. Registrar usuario
       await register({
         username: formData.username,
         email: formData.email,
@@ -61,17 +86,26 @@ const Register = () => {
         lastName: formData.lastName
       });
       
-      handleNext();
+      // 2. Si es crear negocio, crear el negocio
+      if (userType === 'create' && formData.businessName) {
+        await authService.createBusiness({
+          name: formData.businessName,
+          address: formData.businessAddress,
+          phone: formData.businessPhone
+        });
+      }
+      
+      // 3. Si es unirse a negocio, hacer la solicitud
+      if (userType === 'join' && formData.selectedBusinessId) {
+        await authService.joinBusinessRequest(formData.selectedBusinessId);
+      }
+      
+      navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.detail || 'Error al registrar usuario');
+      setError(err.response?.data?.detail || 'Error al completar el registro');
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleUserTypeSelection = (type) => {
-    setUserType(type);
-    handleNext();
   };
 
   const getStepContent = (step) => {
@@ -83,7 +117,7 @@ const Register = () => {
             handleChange={handleChange}
             error={error}
             loading={loading}
-            onSubmit={handleRegister}
+            onSubmit={handlePersonalInfoNext}  // CAMBIO 3: Usa la nueva función
             onBack={() => navigate('/login')}
           />
         );
@@ -100,7 +134,9 @@ const Register = () => {
             formData={formData}
             handleChange={handleChange}
             onBack={handleBack}
-            onComplete={() => navigate('/dashboard')}
+            onComplete={handleCompleteRegistration}  // CAMBIO 4: Usa la función de registro completo
+            loading={loading}
+            error={error}
           />
         );
       default:

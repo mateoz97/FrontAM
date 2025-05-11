@@ -2,6 +2,7 @@ import api from './api';
 
 const authService = {
   async login(credentials) {
+    // CAMBIO 4: Verificamos el backend Django para login personalizado
     const response = await api.post('/accounts/login/', credentials);
     if (response.data.access) {
       localStorage.setItem('token', response.data.access);

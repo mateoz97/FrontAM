@@ -60,18 +60,21 @@ function App() {
               } 
             />
             <Route
-              path="/*"
               element={
                 <ProtectedRoute>
-                  <MainLayout>
-                    <Routes>
-                      <Route path="/dashboard" element={<Dashboard />} />
-                      <Route path="/" element={<Navigate to="/dashboard" />} />
-                    </Routes>
-                  </MainLayout>
+                  <MainLayout />
                 </ProtectedRoute>
               }
-            />
+            >
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/" element={<Navigate to="/dashboard" />} />
+              {/* Aquí puedes agregar más rutas protegidas */}
+              <Route path="/orders" element={<div>Pedidos</div>} />
+              <Route path="/inventory" element={<div>Inventario</div>} />
+              <Route path="/users" element={<div>Usuarios</div>} />
+              <Route path="/settings" element={<div>Configuración</div>} />
+            </Route>
+            <Route path="*" element={<Navigate to="/dashboard" />} />
           </Routes>
         </AuthProvider>
       </Router>

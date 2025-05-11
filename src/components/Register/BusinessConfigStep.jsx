@@ -7,10 +7,10 @@ import {
 import { Search, CheckCircle, Home } from '@mui/icons-material';
 import authService from '../../services/auth.service';
 
-const BusinessConfigStep = ({ userType, formData, handleChange, onBack, onComplete }) => {
-  const [loading, setLoading] = useState(false);
-  const [businesses, setBusinesses] = useState([]);
+const BusinessConfigStep = ({ userType, formData, handleChange, onBack, onComplete, loading, error }) => {
   const [searchLoading, setSearchLoading] = useState(false);
+  const [businesses, setBusinesses] = useState([]);
+  const [selectedBusiness, setSelectedBusiness] = useState(null);
 
   useEffect(() => {
     if (userType === 'join') {
@@ -38,32 +38,16 @@ const BusinessConfigStep = ({ userType, formData, handleChange, onBack, onComple
     }
   };
 
-  const handleBusinessCreation = async () => {
-    setLoading(true);
-    try {
-      await authService.createBusiness({
-        name: formData.businessName,
-        address: formData.businessAddress,
-        phone: formData.businessPhone
-      });
-      onComplete();
-    } catch (error) {
-      console.error('Error creating business:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleBusinessJoin = async (businessId) => {
-    setLoading(true);
-    try {
-      await authService.joinBusinessRequest(businessId);
-      onComplete();
-    } catch (error) {
-      console.error('Error joining business:', error);
-    } finally {
-      setLoading(false);
-    }
+  // CAMBIO 5: Función para seleccionar un negocio
+  const handleSelectBusiness = (business) => {
+    setSelectedBusiness(business);
+    // Guardar el ID del negocio seleccionado en formData
+    handleChange({
+      target: {
+        name: 'selectedBusinessId',
+        value: business.id
+      }
+    });
   };
 
   // Crear negocio
@@ -73,6 +57,12 @@ const BusinessConfigStep = ({ userType, formData, handleChange, onBack, onComple
         <Typography variant="h5" gutterBottom sx={{ mb: 3 }}>
           Información de tu negocio
         </Typography>
+        
+        {error && (
+          <Typography color="error" sx={{ mb: 2 }}>
+            {error}
+          </Typography>
+        )}
         
         <TextField
           fullWidth
@@ -109,11 +99,11 @@ const BusinessConfigStep = ({ userType, formData, handleChange, onBack, onComple
           
           <Button
             variant="contained"
-            onClick={handleBusinessCreation}
-            disabled={loading}
+            onClick={onComplete}
+            disabled={loading || !formData.businessName}
             startIcon={loading ? <CircularProgress size={20} /> : <CheckCircle />}
           >
-            {loading ? 'Creando negocio...' : 'Crear negocio'}
+            {loading ? 'Creando cuenta...' : 'Crear cuenta y negocio'}
           </Button>
         </Box>
       </Box>
@@ -127,6 +117,12 @@ const BusinessConfigStep = ({ userType, formData, handleChange, onBack, onComple
         <Typography variant="h5" gutterBottom sx={{ mb: 3 }}>
           Buscar negocio
         </Typography>
+        
+        {error && (
+          <Typography color="error" sx={{ mb: 2 }}>
+            {error}
+          </Typography>
+        )}
         
         <TextField
           fullWidth
@@ -144,13 +140,26 @@ const BusinessConfigStep = ({ userType, formData, handleChange, onBack, onComple
           }}
         />
         
+        {selectedBusiness && (
+          <Box sx={{ mt: 2, p: 2, bgcolor: 'success.light', borderRadius: 1 }}>
+            <Typography>Negocio seleccionado: {selectedBusiness.name}</Typography>
+          </Box>
+        )}
+        
         <List sx={{ mt: 3 }}>
           {searchLoading ? (
             <Box sx={{ textAlign: 'center', py: 4 }}>
               <CircularProgress />
             </Box>
           ) : businesses.map((business) => (
-            <Paper key={business.id} elevation={2} sx={{ mb: 2 }}>
+            <Paper 
+              key={business.id} 
+              elevation={2} 
+              sx={{ 
+                mb: 2,
+                bgcolor: selectedBusiness?.id === business.id ? 'action.selected' : 'background.paper'
+              }}
+            >
               <ListItem sx={{ py: 2 }}>
                 <ListItemAvatar>
                   <Avatar sx={{ bgcolor: 'primary.light' }}>
@@ -162,21 +171,29 @@ const BusinessConfigStep = ({ userType, formData, handleChange, onBack, onComple
                   secondary={`${business.member_count || 0} miembros`}
                 />
                 <Button
-                  variant="outlined"
+                  variant={selectedBusiness?.id === business.id ? "contained" : "outlined"}
                   color="primary"
-                  onClick={() => handleBusinessJoin(business.id)}
-                  disabled={loading}
+                  onClick={() => handleSelectBusiness(business)}
                 >
-                  Solicitar unirse
+                  {selectedBusiness?.id === business.id ? "Seleccionado" : "Seleccionar"}
                 </Button>
               </ListItem>
             </Paper>
           ))}
         </List>
         
-        <Box sx={{ display: 'flex', justifyContent: 'flex-start', mt: 4 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
           <Button variant="outlined" onClick={onBack}>
             Atrás
+          </Button>
+          
+          <Button
+            variant="contained"
+            onClick={onComplete}
+            disabled={loading || !selectedBusiness}
+            startIcon={loading ? <CircularProgress size={20} /> : <CheckCircle />}
+          >
+            {loading ? 'Creando cuenta...' : 'Crear cuenta y solicitar unirse'}
           </Button>
         </Box>
       </Box>
@@ -187,23 +204,28 @@ const BusinessConfigStep = ({ userType, formData, handleChange, onBack, onComple
   if (userType === 'client') {
     return (
       <Box sx={{ textAlign: 'center', py: 4 }}>
-        <CheckCircle sx={{ fontSize: 80, color: 'success.main', mb: 2 }} />
-        
         <Typography variant="h5" gutterBottom>
-          ¡Bienvenido!
+          ¡Ya casi terminamos!
         </Typography>
         
+        {error && (
+          <Typography color="error" sx={{ mb: 2 }}>
+            {error}
+          </Typography>
+        )}
+        
         <Typography variant="body1" sx={{ mb: 4 }}>
-          Tu cuenta ha sido creada exitosamente.
+          Haz clic en el botón para completar tu registro como cliente.
         </Typography>
         
         <Button
           variant="contained"
           size="large"
           onClick={onComplete}
-          startIcon={<Home />}
+          disabled={loading}
+          startIcon={loading ? <CircularProgress size={20} /> : <Home />}
         >
-          Ir al inicio
+          {loading ? 'Creando cuenta...' : 'Completar registro'}
         </Button>
       </Box>
     );
