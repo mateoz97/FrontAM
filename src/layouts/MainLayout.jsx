@@ -19,11 +19,13 @@ import {
   Fade,
   Collapse,
   Chip,
+  Button,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
   Close as CloseIcon,
   Dashboard as DashboardIcon,
+  RssFeed as FeedIcon, // Aquí está el cambio: RssFeed en lugar de Feed
   Receipt as ReceiptIcon,
   Inventory as InventoryIcon,
   People as PeopleIcon,
@@ -78,14 +80,43 @@ const UserInfo = styled(Box)(({ theme }) => ({
 }));
 
 const menuItems = [
-  { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
-  // { text: 'Feed', icon: <FeedIcon />, path: '/feed' },
-  { text: 'Pedidos', icon: <ReceiptIcon />, path: '/orders' },
-  { text: 'Inventario', icon: <InventoryIcon />, path: '/inventory' },
-  { text: 'Usuarios', icon: <PeopleIcon />, path: '/users' },
-  { text: 'Configuración', icon: <SettingsIcon />, path: '/settings' },
+  { 
+    text: 'Dashboard', 
+    icon: <DashboardIcon />, 
+    path: '/dashboard',
+    description: 'Panel principal' 
+  },
+  { 
+    text: 'Feed', 
+    icon: <FeedIcon />, 
+    path: '/feed',
+    description: 'Publicaciones y novedades'
+  },
+  { 
+    text: 'Pedidos', 
+    icon: <ReceiptIcon />, 
+    path: '/orders',
+    description: 'Gestión de pedidos'
+  },
+  { 
+    text: 'Inventario', 
+    icon: <InventoryIcon />, 
+    path: '/inventory',
+    description: 'Gestión de productos'
+  },
+  { 
+    text: 'Usuarios', 
+    icon: <PeopleIcon />, 
+    path: '/users',
+    description: 'Gestión de usuarios'
+  },
+  { 
+    text: 'Configuración', 
+    icon: <SettingsIcon />, 
+    path: '/settings',
+    description: 'Ajustes del sistema'
+  },
 ];
-
 
 function MainLayout() {
   const theme = useTheme();
@@ -231,13 +262,20 @@ function MainLayout() {
                 >
                   {item.icon}
                 </ListItemIcon>
-                <ListItemText 
-                  primary={item.text} 
-                  primaryTypographyProps={{
-                    fontSize: '0.95rem',
-                    fontWeight: location.pathname === item.path ? 'bold' : 'medium',
-                  }}
-                />
+                <Box>
+                  <ListItemText 
+                    primary={item.text} 
+                    primaryTypographyProps={{
+                      fontSize: '0.95rem',
+                      fontWeight: location.pathname === item.path ? 'bold' : 'medium',
+                    }}
+                  />
+                  {item.description && (
+                    <Typography variant="caption" color="text.secondary">
+                      {item.description}
+                    </Typography>
+                  )}
+                </Box>
               </ListItemButton>
             </ListItem>
           </Collapse>
@@ -298,6 +336,26 @@ function MainLayout() {
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             Control de Restaurante
           </Typography>
+          
+          {/* Botones de navegación rápida */}
+          <Box sx={{ display: { xs: 'none', md: 'flex' }, mr: 3 }}>
+            <Button 
+              color="inherit" 
+              startIcon={<DashboardIcon />}
+              onClick={() => navigate('/dashboard')}
+              sx={{ mr: 1 }}
+            >
+              Dashboard
+            </Button>
+            <Button 
+              color="inherit" 
+              startIcon={<FeedIcon />}
+              onClick={() => navigate('/feed')}
+            >
+              Feed
+            </Button>
+          </Box>
+          
           <Fade in={!open} timeout={300}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               {/* Mostrar información de negocio y rol en el header */}

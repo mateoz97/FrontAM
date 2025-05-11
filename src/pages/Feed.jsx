@@ -21,12 +21,13 @@ import {
   Send as SendIcon,
   Business as BusinessIcon,
   Badge as BadgeIcon,
+  RssFeed as FeedIcon, // Aquí está el cambio: RssFeed en lugar de Feed
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import postService from '../services/post.service';
 
 const PostCard = ({ post, onLike, onComment }) => {
-  // Removed unused 'user' variable
+//   const { user } = useAuth();
   const [showComments, setShowComments] = useState(false);
   const [comment, setComment] = useState('');
 
@@ -204,10 +205,15 @@ const CreatePostCard = ({ onCreatePost }) => {
 };
 
 function Feed() {
-  // Removed unused 'user' variable
+//   const { user } = useAuth();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Añadir esto para depuración
+  useEffect(() => {
+    console.log("Feed component mounted!");
+  }, []);
 
   useEffect(() => {
     loadPosts();
@@ -215,11 +221,13 @@ function Feed() {
 
   const loadPosts = async () => {
     try {
+      setLoading(true);
       const data = await postService.getFeed();
-      setPosts(data);
+      console.log("Feed data loaded:", data);
+      setPosts(Array.isArray(data) ? data : []);
     } catch (err) {
-      setError('Error al cargar el feed');
-      console.error(err);
+      console.error("Error loading feed:", err);
+      setError('Error al cargar el feed. Por favor, intenta de nuevo más tarde.');
     } finally {
       setLoading(false);
     }
@@ -231,6 +239,7 @@ function Feed() {
       setPosts([newPost, ...posts]);
     } catch (err) {
       console.error('Error al crear post:', err);
+      alert('No se pudo crear la publicación. Intenta de nuevo más tarde.');
     }
   };
 
@@ -265,21 +274,41 @@ function Feed() {
     );
   }
 
-  if (error) {
-    return (
-      <Box sx={{ textAlign: 'center', mt: 4 }}>
-        <Typography color="error">{error}</Typography>
-      </Box>
-    );
-  }
-
   return (
-    <Box>
+    <Box id="feed-root">
       <Typography variant="h4" component="h1" gutterBottom>
         Feed
       </Typography>
       
       <CreatePostCard onCreatePost={handleCreatePost} />
+      
+      {error && (
+        <Box sx={{ textAlign: 'center', my: 4, p: 2, bgcolor: 'error.light', borderRadius: 1 }}>
+          <Typography color="error.dark">{error}</Typography>
+          <Button 
+            variant="outlined" 
+            color="error" 
+            sx={{ mt: 1 }}
+            onClick={loadPosts}
+          >
+            Reintentar
+          </Button>
+        </Box>
+      )}
+      
+      {!error && posts.length === 0 && !loading && (
+        <Card>
+          <CardContent sx={{ textAlign: 'center', py: 4 }}>
+            <FeedIcon sx={{ fontSize: 60, color: 'text.secondary', opacity: 0.5, mb: 2 }} />
+            <Typography color="textSecondary" variant="h6">
+              No hay publicaciones aún
+            </Typography>
+            <Typography color="textSecondary">
+              ¡Sé el primero en publicar algo!
+            </Typography>
+          </CardContent>
+        </Card>
+      )}
       
       {posts.map((post) => (
         <PostCard
@@ -289,16 +318,6 @@ function Feed() {
           onComment={handleComment}
         />
       ))}
-      
-      {posts.length === 0 && (
-        <Card>
-          <CardContent sx={{ textAlign: 'center', py: 4 }}>
-            <Typography color="textSecondary">
-              No hay publicaciones aún. ¡Sé el primero en publicar!
-            </Typography>
-          </CardContent>
-        </Card>
-      )}
     </Box>
   );
 }

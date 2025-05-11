@@ -1,5 +1,6 @@
 // src/pages/Dashboard.jsx
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Grid,
@@ -9,6 +10,7 @@ import {
   Avatar,
   Paper,
   Chip,
+  Button,
 } from '@mui/material';
 import {
   AttachMoney as MoneyIcon,
@@ -18,6 +20,7 @@ import {
   TrendingUp as TrendingUpIcon,
   Business as BusinessIcon,
   Badge as BadgeIcon,
+  RssFeed as FeedIcon, // Aquí está el cambio: RssFeed en lugar de Feed
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -53,6 +56,7 @@ const stats = [
 ];
 
 function Dashboard() {
+  const navigate = useNavigate();
   const { user, getUserBusiness, getUserRole } = useAuth();
   const businessInfo = getUserBusiness();
   const roleInfo = getUserRole();
@@ -191,6 +195,23 @@ function Dashboard() {
           </Grid>
         </Box>
       )}
+
+      {/* Botón para ir al Feed */}
+      <Box sx={{ mt: 4, textAlign: 'center' }}>
+        <Typography variant="h6" gutterBottom>
+          ¿Quieres ver las últimas publicaciones?
+        </Typography>
+        <Button 
+          variant="contained" 
+          color="primary" 
+          size="large"
+          startIcon={<FeedIcon />}
+          onClick={() => navigate('/feed')}
+          sx={{ mt: 2 }}
+        >
+          Ir al Feed
+        </Button>
+      </Box>
     </Box>
   );
 }
