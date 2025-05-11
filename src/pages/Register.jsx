@@ -100,7 +100,7 @@ const Register = () => {
         await authService.joinBusinessRequest(formData.selectedBusinessId);
       }
       
-      navigate('/dashboard');
+      navigate('/feed');
     } catch (err) {
       setError(err.response?.data?.detail || 'Error al completar el registro');
     } finally {

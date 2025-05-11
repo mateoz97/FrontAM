@@ -1,3 +1,4 @@
+// src/App.jsx
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
@@ -7,6 +8,7 @@ import theme from './styles/theme';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import SocialFeed from './pages/SocialFeed'; // Nueva página
 import Dashboard from './pages/Dashboard';
 import MainLayout from './layouts/MainLayout';
 
@@ -30,7 +32,7 @@ const PublicRoute = ({ children }) => {
   const { isAuthenticated } = useAuth();
   
   if (isAuthenticated) {
-    return <Navigate to="/dashboard" />;
+    return <Navigate to="/feed" />; // Cambiamos a /feed como página principal
   }
   
   return children;
@@ -60,21 +62,28 @@ function App() {
               } 
             />
             <Route
+              path="/feed"
+              element={
+                <ProtectedRoute>
+                  <SocialFeed />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               element={
                 <ProtectedRoute>
                   <MainLayout />
                 </ProtectedRoute>
               }
             >
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/" element={<Navigate to="/dashboard" />} />
-              {/* Aquí puedes agregar más rutas protegidas */}
+              <Route path="/dashboard/:businessId" element={<Dashboard />} />
               <Route path="/orders" element={<div>Pedidos</div>} />
               <Route path="/inventory" element={<div>Inventario</div>} />
               <Route path="/users" element={<div>Usuarios</div>} />
               <Route path="/settings" element={<div>Configuración</div>} />
             </Route>
-            <Route path="*" element={<Navigate to="/dashboard" />} />
+            <Route path="/" element={<Navigate to="/feed" />} />
+            <Route path="*" element={<Navigate to="/feed" />} />
           </Routes>
         </AuthProvider>
       </Router>

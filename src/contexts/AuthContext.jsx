@@ -1,3 +1,4 @@
+// src/contexts/AuthContext.jsx
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import authService from '../services/auth.service';
 
@@ -14,14 +15,19 @@ const useAuth = () => {
 const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [activeBusinessId, setActiveBusinessId] = useState(null);
 
   useEffect(() => {
-    const checkAuth = () => {
-      console.log('Checking authentication...');
+    const checkAuth = async () => {
       try {
         const currentUser = authService.getCurrentUser();
-        console.log('Current user:', currentUser);
-        setUser(currentUser);
+        if (currentUser) {
+          setUser(currentUser);
+          // Si el usuario tiene un negocio, establecerlo como activo
+          if (currentUser.business) {
+            setActiveBusinessId(currentUser.business);
+          }
+        }
       } catch (error) {
         console.error('Auth check error:', error);
       } finally {
@@ -32,12 +38,20 @@ const AuthProvider = ({ children }) => {
     checkAuth();
   }, []);
 
+  useEffect(() => {
+    // Guardar el negocio activo en localStorage
+    if (activeBusinessId) {
+      localStorage.setItem('activeBusinessId', activeBusinessId);
+    }
+  }, [activeBusinessId]);
+
   const login = async (credentials) => {
-    console.log('Login attempt with:', credentials);
     try {
       const data = await authService.login(credentials);
-      console.log('Login response:', data);
       setUser(data.user);
+      if (data.user.business) {
+        setActiveBusinessId(data.user.business);
+      }
       return data;
     } catch (error) {
       console.error('Login error:', error);
@@ -46,10 +60,8 @@ const AuthProvider = ({ children }) => {
   };
 
   const register = async (userData) => {
-    console.log('Register attempt with:', userData);
     try {
       const data = await authService.register(userData);
-      console.log('Register response:', data);
       setUser(data.user);
       return data;
     } catch (error) {
@@ -59,9 +71,14 @@ const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    console.log('Logout');
     authService.logout();
     setUser(null);
+    setActiveBusinessId(null);
+    localStorage.removeItem('activeBusinessId');
+  };
+
+  const switchBusiness = (businessId) => {
+    setActiveBusinessId(businessId);
   };
 
   const value = {
@@ -70,10 +87,10 @@ const AuthProvider = ({ children }) => {
     register,
     logout,
     loading,
-    isAuthenticated: !!user
+    isAuthenticated: !!user,
+    activeBusinessId,
+    switchBusiness
   };
-
-  console.log('AuthContext value:', value);
 
   return (
     <AuthContext.Provider value={value}>
@@ -82,6 +99,5 @@ const AuthProvider = ({ children }) => {
   );
 };
 
-// Exports nombrados
 export { AuthProvider, useAuth };
 export default AuthContext;
