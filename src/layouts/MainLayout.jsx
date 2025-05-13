@@ -2,10 +2,6 @@
 import React, { useState } from 'react';
 import {
   Box,
-  AppBar,
-  Toolbar,
-  Typography,
-  IconButton,
   Drawer,
   List,
   ListItem,
@@ -19,25 +15,25 @@ import {
   Fade,
   Collapse,
   Chip,
-  Button,
+  IconButton,
+  Typography,
 } from '@mui/material';
 import {
-  Menu as MenuIcon,
-  Close as CloseIcon,
+  ChevronLeft as ChevronLeftIcon,
   Dashboard as DashboardIcon,
-  RssFeed as FeedIcon, // Usando RssFeed en lugar de Feed
+  RssFeed as FeedIcon, 
   Receipt as ReceiptIcon,
   Inventory as InventoryIcon,
   People as PeopleIcon,
   Settings as SettingsIcon,
   Logout as LogoutIcon,
-  ChevronLeft as ChevronLeftIcon,
   Business as BusinessIcon,
   Badge as BadgeIcon,
 } from '@mui/icons-material';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { styled } from '@mui/material/styles';
+import TopHeader from '../components/SocialFeed/TopHeader';
 
 const drawerWidth = 260;
 
@@ -48,17 +44,6 @@ const StyledDrawer = styled(Drawer)(({ theme }) => ({
     boxSizing: 'border-box',
     backgroundColor: theme.palette.mode === 'dark' ? '#1e1e1e' : '#fff',
     borderRight: `1px solid ${theme.palette.divider}`,
-  },
-}));
-
-// Animación para el ícono del menú
-const AnimatedMenuIcon = styled(IconButton)(({ theme, open }) => ({
-  transition: theme.transitions.create(['transform', 'color'], {
-    duration: theme.transitions.duration.shorter,
-  }),
-  transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
-  '&:hover': {
-    color: theme.palette.primary.main,
   },
 }));
 
@@ -330,87 +315,11 @@ function MainLayout() {
 
   return (
     <Box sx={{ display: 'flex' }}>
-      <AppBar
-        position="fixed"
-        sx={{
-          zIndex: (theme) => theme.zIndex.drawer + 1,
-          transition: theme.transitions.create(['margin', 'width'], {
-            easing: theme.transitions.easing.sharp,
-            duration: theme.transitions.duration.leavingScreen,
-          }),
-        }}
-      >
-        <Toolbar>
-          <AnimatedMenuIcon
-            color="inherit"
-            aria-label={open ? "close drawer" : "open drawer"}
-            edge="start"
-            onClick={handleDrawerToggle}
-            sx={{ mr: 2 }}
-            open={open}
-          >
-            {open ? <CloseIcon /> : <MenuIcon />}
-          </AnimatedMenuIcon>
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            Control de Restaurante
-          </Typography>
-          
-          {/* Botones de navegación rápida */}
-          <Box sx={{ display: { xs: 'none', md: 'flex' }, mr: 3 }}>
-            {/* Mostrar Dashboard solo si el usuario tiene un negocio */}
-            {businessInfo && (
-              <Button 
-                color="inherit" 
-                startIcon={<DashboardIcon />}
-                onClick={() => navigate('/dashboard')}
-                sx={{ mr: 1 }}
-              >
-                Dashboard
-              </Button>
-            )}
-            <Button 
-              color="inherit" 
-              startIcon={<FeedIcon />}
-              onClick={() => navigate('/')}
-              sx={{ 
-                fontWeight: location.pathname === '/' ? 'bold' : 'normal',
-                textDecoration: location.pathname === '/' ? 'underline' : 'none'
-              }}
-            >
-              Feed
-            </Button>
-          </Box>
-          
-          <Fade in={!open} timeout={300}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              {/* Mostrar información de negocio y rol en el header */}
-              {businessInfo && (
-                <Chip 
-                  icon={<BusinessIcon />}
-                  label={businessInfo.name}
-                  color="primary"
-                  variant="outlined"
-                  sx={{ display: { xs: 'none', sm: 'flex' } }}
-                />
-              )}
-              {roleInfo && (
-                <Chip 
-                  icon={<BadgeIcon />}
-                  label={roleInfo.name}
-                  size="small"
-                  sx={{ display: { xs: 'none', sm: 'flex' } }}
-                />
-              )}
-              <Typography variant="body1" sx={{ display: { xs: 'none', sm: 'block' } }}>
-                {getUserFullName()}
-              </Typography>
-              <Avatar sx={{ bgcolor: 'secondary.main' }}>
-                {getAvatarInitial()}
-              </Avatar>
-            </Box>
-          </Fade>
-        </Toolbar>
-      </AppBar>
+      {/* Usar el nuevo TopHeader con los props necesarios */}
+      <TopHeader 
+        onDrawerToggle={handleDrawerToggle} 
+        open={open} 
+      />
 
       <StyledDrawer
         variant="persistent"

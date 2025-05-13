@@ -9,7 +9,6 @@ import { Add as AddIcon, Search as SearchIcon } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 
 // Componentes
-import TopHeader from '../components/SocialFeed/TopHeader';
 import BusinessSwitcher from '../components/SocialFeed/BusinessSwitcher';
 import CreatePost from '../components/SocialFeed/CreatePost';
 import PostCard from '../components/SocialFeed/PostCard';
@@ -162,9 +161,9 @@ const Feed = () => {
 
   return (
     <Box sx={{ pb: isMobile ? 7 : 0, backgroundColor: '#f0f2f5', minHeight: '100vh' }}>
-      <TopHeader />
+      {/* TopHeader ya está incluido en MainLayout, no es necesario aquí */}
       
-      <Container maxWidth="md" sx={{ px: isMobile ? 2 : 3, py: 2 }}>
+      <Container maxWidth="md" sx={{ px: isMobile ? 2 : 3, py: 2, mt: 8 }}> {/* Se agregó mt: 8 para compensar la altura del header */}
         {/* BusinessSwitcher - Solo si el usuario tiene negocios */}
         {businesses && businesses.length > 0 ? (
           <BusinessSwitcher 
