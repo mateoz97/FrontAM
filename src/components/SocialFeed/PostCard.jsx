@@ -3,17 +3,27 @@ import React, { useState } from 'react';
 import {
   Card, CardHeader, CardContent, CardMedia, CardActions,
   Avatar, Typography, IconButton, Button, Box, Divider,
-  TextField, Chip
+  TextField, Chip, Skeleton
 } from '@mui/material';
 import {
   MoreVert, FavoriteBorder, Favorite, 
   Comment, Share, Send, Business, Badge
 } from '@mui/icons-material';
 
-const PostCard = ({ post, onLike, onComment, onShare }) => {
+/**
+ * Componente que muestra una publicación en el feed
+ * @param {Object} props 
+ * @param {Object} props.post - Datos de la publicación
+ * @param {Function} props.onLike - Función para dar like
+ * @param {Function} props.onComment - Función para comentar
+ * @param {Function} props.onShare - Función para compartir
+ * @param {boolean} props.loading - Indica si está cargando
+ */
+const PostCard = ({ post, onLike, onComment, onShare, loading = false }) => {
   const [showComments, setShowComments] = useState(false);
   const [commentText, setCommentText] = useState('');
 
+  // Formatear fecha relativa
   const formatDate = (dateString) => {
     if (!dateString) return 'Hace un momento';
     
@@ -46,6 +56,28 @@ const PostCard = ({ post, onLike, onComment, onShare }) => {
       handleCommentSubmit();
     }
   };
+
+  // Si está cargando, mostrar skeleton
+  if (loading) {
+    return (
+      <Card sx={{ mb: 3, borderRadius: 2, overflow: 'hidden' }}>
+        <CardHeader
+          avatar={<Skeleton variant="circular" width={40} height={40} />}
+          title={<Skeleton variant="text" width="60%" />}
+          subheader={<Skeleton variant="text" width="40%" />}
+        />
+        <CardContent>
+          <Skeleton variant="text" />
+          <Skeleton variant="text" />
+          <Skeleton variant="text" width="80%" />
+        </CardContent>
+        <Skeleton variant="rectangular" height={200} />
+        <CardActions>
+          <Skeleton variant="text" width="100%" height={40} />
+        </CardActions>
+      </Card>
+    );
+  }
 
   return (
     <Card sx={{ mb: 3, borderRadius: 2, overflow: 'hidden' }}>
@@ -111,7 +143,12 @@ const PostCard = ({ post, onLike, onComment, onShare }) => {
         <Typography variant="body2" color="text.secondary">
           {post.likes || 0} Me gusta
         </Typography>
-        <Typography variant="body2" color="text.secondary" onClick={() => setShowComments(!showComments)} sx={{ cursor: 'pointer' }}>
+        <Typography 
+          variant="body2" 
+          color="text.secondary" 
+          onClick={() => setShowComments(!showComments)} 
+          sx={{ cursor: 'pointer' }}
+        >
           {post.comments || 0} comentarios
         </Typography>
       </Box>
@@ -151,7 +188,9 @@ const PostCard = ({ post, onLike, onComment, onShare }) => {
       {showComments && (
         <Box sx={{ p: 2, bgcolor: 'grey.50' }}>
           <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-            <Avatar sx={{ width: 32, height: 32 }}>U</Avatar>
+            <Avatar sx={{ width: 32, height: 32 }}>
+              {post.author?.name?.[0] || 'U'}
+            </Avatar>
             <TextField
               fullWidth
               variant="outlined"

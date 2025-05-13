@@ -104,13 +104,21 @@ export const AuthProvider = ({ children }) => {
     setActiveBusinessId(null);
   };
 
-  const updateUser = (userData) => {
-    setUser(userData);
-    localStorage.setItem('user', JSON.stringify(userData));
-    
-    // Actualizar negocio activo si es necesario
-    if (userData?.business_info?.id) {
-      setActiveBusinessId(userData.business_info.id);
+  const updateUser = async () => {
+    try {
+      const updatedUserData = await authService.getUserInfo();
+      setUser(updatedUserData);
+      localStorage.setItem('user', JSON.stringify(updatedUserData));
+      
+      // Actualizar negocio activo si es necesario
+      if (updatedUserData?.business_info?.id) {
+        setActiveBusinessId(updatedUserData.business_info.id);
+      }
+      
+      return updatedUserData;
+    } catch (error) {
+      console.error('Error al actualizar información del usuario:', error);
+      throw error;
     }
   };
 

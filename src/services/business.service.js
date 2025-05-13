@@ -96,17 +96,79 @@ const businessService = {
   },
   
   /**
-   * Obtiene la lista de sucursales de un negocio
-   * @param {number} businessId - ID del negocio principal
-   * @returns {Promise<Array>} Lista de sucursales
+   * Envía una solicitud para unirse a un negocio
+   * @param {number} businessId - ID del negocio al que unirse
+   * @param {string} message - Mensaje opcional para la solicitud
+   * @returns {Promise<Object>} Resultado de la operación
    */
-  async getBranches(businessId) {
+  async joinBusinessRequest(businessId, message = '') {
     try {
-      console.log(`Obteniendo sucursales del negocio ID: ${businessId}`);
-      const response = await api.get(`/business/${businessId}/branches/`);
+      console.log(`Enviando solicitud para unirse al negocio ID: ${businessId}`);
+      const response = await api.post('/business/join-business-request/', {
+        business: businessId,
+        message: message
+      });
       return response.data;
     } catch (error) {
-      console.error(`Error al obtener sucursales del negocio ID ${businessId}:`, error);
+      console.error(`Error al enviar solicitud para unirse al negocio ID ${businessId}:`, error);
+      throw error;
+    }
+  },
+  
+  /**
+   * Obtiene lista de solicitudes pendientes del usuario
+   * @returns {Promise<Array>} Lista de solicitudes
+   */
+  async getUserJoinRequests() {
+    try {
+      console.log('Obteniendo solicitudes pendientes del usuario...');
+      const response = await api.get('/business/join-business-request/');
+      return response.data;
+    } catch (error) {
+      console.error('Error al obtener solicitudes pendientes:', error);
+      return [];
+    }
+  },
+  
+  /**
+   * Abandona el negocio actual
+   * @returns {Promise<Object>} Resultado de la operación
+   */
+  async leaveBusiness() {
+    try {
+      console.log('Abandonando negocio actual...');
+      const response = await api.post('/business/leave-business/');
+      return response.data;
+    } catch (error) {
+      console.error('Error al abandonar negocio:', error);
+      throw error;
+    }
+  },
+  
+  /**
+   * Busca negocios por nombre
+   * @param {string} query - Texto a buscar
+   * @returns {Promise<Array>} Lista de negocios encontrados
+   */
+  async searchBusinesses(query) {
+    try {
+      console.log(`Buscando negocios con: "${query}"`);
+      const response = await api.get('/business/', {
+        params: { search: query }
+      });
+      
+      // Manejar diferentes formatos de respuesta
+      if (response.data && typeof response.data === 'object') {
+        if (Array.isArray(response.data)) {
+          return response.data;
+        } else if (response.data.results) {
+          return response.data.results;
+        }
+      }
+      
+      return [];
+    } catch (error) {
+      console.error('Error al buscar negocios:', error);
       return [];
     }
   }

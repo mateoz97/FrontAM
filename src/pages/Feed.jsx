@@ -1,8 +1,8 @@
-// src/pages/Feed.jsx
-import React, { useState, useEffect } from 'react';
+// src/pages/Feed.jsx (continuación)
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box, Container, CircularProgress, useTheme, useMediaQuery,
-  Paper, Button, Chip, Typography
+  Paper, Button, Chip, Typography, Alert, Snackbar
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { Add as AddIcon, Search as SearchIcon } from '@mui/icons-material';
@@ -20,8 +20,7 @@ import businessService from '../services/business.service';
 import postService from '../services/post.service';
 
 // Componente para mostrar cuando el usuario no tiene negocio
-const NoBusinessBanner = () => {
-  const navigate = useNavigate();
+const NoBusinessBanner = ({ navigate }) => {
 
   return (
     <Paper 
@@ -74,33 +73,113 @@ const Feed = () => {
   
   const [businesses, setBusinesses] = useState([]);
   const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingBusinesses, setLoadingBusinesses] = useState(true);
+  const [loadingPosts, setLoadingPosts] = useState(true);
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [error, setError] = useState(null);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
 
-  useEffect(() => {
-    loadData();
+  // Función para cargar los negocios del usuario
+  const loadBusinesses = useCallback(async () => {
+    try {
+      setLoadingBusinesses(true);
+      const businessesData = await businessService.getUserBusinesses();
+      
+      // Verificar el formato de la respuesta
+      if (Array.isArray(businessesData)) {
+        setBusinesses(businessesData);
+      } else if (businessesData && typeof businessesData === 'object') {
+        // Intentar extraer datos si viene en formato diferente
+        if (businessesData.results) {
+          setBusinesses(businessesData.results);
+        } else {
+          // Convertir objeto a array si es necesario
+          const businessArray = Object.values(businessesData);
+          if (Array.isArray(businessArray)) {
+            setBusinesses(businessArray);
+          } else {
+            setBusinesses([]);
+          }
+        }
+      } else {
+        setBusinesses([]);
+      }
+    } catch (error) {
+      console.error('Error al cargar negocios:', error);
+      setError('Error al cargar tus negocios. Intenta de nuevo más tarde.');
+      setBusinesses([]);
+    } finally {
+      setLoadingBusinesses(false);
+    }
   }, []);
 
-  const loadData = async () => {
+  // Función para cargar las publicaciones
+  const loadPosts = useCallback(async () => {
     try {
-      setLoading(true);
-      // Cargar negocios del usuario
-      const businessesData = await businessService.getUserBusinesses();
-      setBusinesses(Array.isArray(businessesData) ? businessesData : []);
-      
-      // Cargar posts
+      setLoadingPosts(true);
       const postsData = await postService.getFeed();
-      setPosts(Array.isArray(postsData) ? postsData : []);
+      
+      // Verificar el formato de la respuesta
+      if (Array.isArray(postsData)) {
+        setPosts(postsData);
+      } else if (postsData && typeof postsData === 'object') {
+        // Intentar extraer datos si viene en formato diferente
+        if (postsData.results) {
+          setPosts(postsData.results);
+        } else {
+          // Convertir objeto a array si es necesario
+          const postsArray = Object.values(postsData);
+          if (Array.isArray(postsArray)) {
+            setPosts(postsArray);
+          } else {
+            setPosts([]);
+          }
+        }
+      } else {
+        setPosts([]);
+      }
     } catch (error) {
-      console.error('Error loading data:', error);
+      console.error('Error al cargar publicaciones:', error);
+      setError('Error al cargar publicaciones. Intenta de nuevo más tarde.');
+      setPosts([]);
     } finally {
-      setLoading(false);
+      setLoadingPosts(false);
     }
-  };
+  }, []);
 
-  const handleBusinessSelect = (businessId) => {
-    switchBusiness(businessId);
-    navigate(`/dashboard/${businessId}`);
+  // Cargar datos al montar el componente
+  useEffect(() => {
+    loadBusinesses();
+    loadPosts();
+  }, [loadBusinesses, loadPosts]);
+
+  // Actualizar cuando cambia el negocio activo
+  useEffect(() => {
+    // Solo recargar posts si cambia el negocio activo
+    if (activeBusinessId) {
+      loadPosts();
+    }
+  }, [activeBusinessId, loadPosts]);
+
+  const handleBusinessSelect = async (businessId) => {
+    try {
+      // Mostrar carga mientras se cambia de negocio
+      setLoadingPosts(true);
+      setSnackbar({ open: true, message: 'Cambiando de negocio...', severity: 'info' });
+      
+      // Llamar al servicio para cambiar de negocio
+      await switchBusiness(businessId);
+      
+      // Recargar posts para el nuevo negocio
+      await loadPosts();
+      
+      setSnackbar({ open: true, message: 'Negocio cambiado correctamente', severity: 'success' });
+    } catch (error) {
+      console.error('Error al cambiar de negocio:', error);
+      setSnackbar({ open: true, message: 'Error al cambiar de negocio', severity: 'error' });
+    } finally {
+      setLoadingPosts(false);
+    }
   };
 
   const handleCreatePost = () => {
@@ -109,11 +188,24 @@ const Feed = () => {
 
   const handlePostCreated = async (newPost) => {
     try {
-      const createdPost = await postService.createPost(newPost);
-      setPosts([createdPost, ...posts]);
+      // Enviar datos al servidor
+      const createdPost = await postService.createPost({
+        content: newPost.content,
+        image: newPost.image,
+        businessId: activeBusinessId
+      });
+      
+      // Añadir nueva publicación al principio de la lista
+      setPosts(prevPosts => [createdPost, ...prevPosts]);
+      
+      // Mostrar mensaje de éxito
+      setSnackbar({ open: true, message: 'Publicación creada correctamente', severity: 'success' });
     } catch (error) {
-      console.error('Error creating post:', error);
+      console.error('Error al crear publicación:', error);
+      setSnackbar({ open: true, message: 'Error al crear la publicación', severity: 'error' });
     }
+    
+    // Cerrar modal
     setCreateModalOpen(false);
   };
 
@@ -122,31 +214,45 @@ const Feed = () => {
       const result = await postService.likePost(postId);
       setPosts(posts.map(post => 
         post.id === postId 
-          ? { ...post, is_liked: result.liked, likes: result.likes_count }
+          ? { ...post, is_liked: result.liked, likes: result.likes_count || post.likes }
           : post
       ));
     } catch (error) {
       console.error('Error al dar like:', error);
+      setSnackbar({ open: true, message: 'Error al actualizar like', severity: 'error' });
     }
   };
 
   const handleComment = async (postId, comment) => {
     try {
+      // Enviar comentario al servidor
       await postService.commentPost(postId, comment);
-      // Recargar posts para obtener los comentarios actualizados
-      const updatedPosts = await postService.getFeed();
-      setPosts(updatedPosts);
+      
+      // Actualizar la publicación (incrementar contador de comentarios)
+      setPosts(posts.map(post => 
+        post.id === postId 
+          ? { ...post, comments: (post.comments || 0) + 1 }
+          : post
+      ));
+      
+      // Mostrar mensaje de éxito
+      setSnackbar({ open: true, message: 'Comentario añadido', severity: 'success' });
     } catch (error) {
       console.error('Error al comentar:', error);
+      setSnackbar({ open: true, message: 'Error al añadir comentario', severity: 'error' });
     }
   };
 
-  const handleShare = (postId) => {
-    // Implementar funcionalidad de compartir
-    console.log('Compartir post:', postId);
+  const handleShare = () => {
+    // Por ahora solo mostramos un mensaje
+    setSnackbar({ open: true, message: 'Funcionalidad de compartir en desarrollo', severity: 'info' });
   };
 
-  if (loading && posts.length === 0) {
+  // Verificar si tenemos datos de negocio en el contexto
+  // Removed unused variable 'businessInfo'
+  
+  // Mostrar loading si ambos están cargando
+  if (loadingBusinesses && loadingPosts && posts.length === 0) {
     return (
       <Box sx={{ 
         display: 'flex', 
@@ -163,24 +269,41 @@ const Feed = () => {
     <Box sx={{ pb: isMobile ? 7 : 0, backgroundColor: '#f0f2f5', minHeight: '100vh' }}>
       {/* TopHeader ya está incluido en MainLayout, no es necesario aquí */}
       
-      <Container maxWidth="md" sx={{ px: isMobile ? 2 : 3, py: 2, mt: 8 }}> {/* Se agregó mt: 8 para compensar la altura del header */}
-        {/* BusinessSwitcher - Solo si el usuario tiene negocios */}
-        {businesses && businesses.length > 0 ? (
-          <BusinessSwitcher 
-            businesses={businesses}
-            activeBusinessId={activeBusinessId}
-            onSelectBusiness={handleBusinessSelect}
-          />
-        ) : null}
+      <Container maxWidth="md" sx={{ px: isMobile ? 2 : 3, py: 2, mt: 8 }}>
+        {/* Mostrar error si existe */}
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
         
-        {/* Banner para usuarios sin negocio */}
-        {(!businesses || businesses.length === 0) && <NoBusinessBanner />}
+        {/* BusinessSwitcher - Solo si el usuario tiene negocios */}
+        <BusinessSwitcher 
+          businesses={businesses}
+          activeBusinessId={activeBusinessId}
+          onSelectBusiness={handleBusinessSelect}
+          loading={loadingBusinesses}
+        />
+        
+        {/* Banner para usuarios sin negocio - Solo mostrar si no hay negocios y ya terminó de cargar */}
+        {!loadingBusinesses && (!businesses || businesses.length === 0) && <NoBusinessBanner navigate={navigate} />}
         
         {/* Create Post */}
         <CreatePost onOpenModal={handleCreatePost} user={user} />
         
         {/* Posts Feed */}
-        {posts.length > 0 ? (
+        {loadingPosts && posts.length === 0 ? (
+          // Mostrar skeletons mientras carga
+          Array.from(new Array(3)).map((_, index) => (
+            <Paper key={`skeleton-${index}`} sx={{ p: 3, mb: 3, borderRadius: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <CircularProgress size={20} sx={{ mr: 2 }} />
+                <Typography variant="body2">Cargando publicaciones...</Typography>
+              </Box>
+            </Paper>
+          ))
+        ) : posts.length > 0 ? (
+          // Mostrar posts
           posts.map((post) => (
             <PostCard 
               key={post.id} 
@@ -191,6 +314,7 @@ const Feed = () => {
             />
           ))
         ) : (
+          // No hay posts
           <Paper sx={{ p: 4, textAlign: 'center', borderRadius: 2 }}>
             <Typography variant="h6" color="textSecondary">
               No hay publicaciones disponibles
@@ -212,6 +336,22 @@ const Feed = () => {
         onPostCreated={handlePostCreated}
         activeBusinessId={activeBusinessId}
       />
+      
+      {/* Snackbar para mensajes */}
+      <Snackbar 
+        open={snackbar.open} 
+        autoHideDuration={4000} 
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert 
+          severity={snackbar.severity} 
+          variant="filled"
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
