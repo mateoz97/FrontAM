@@ -23,11 +23,8 @@ export const AuthProvider = ({ children }) => {
       console.log('Verificando autenticación...');
       setLoading(true);
       try {
-        // Obtener usuario desde localStorage
-        const currentUser = authService.getCurrentUser();
-        
-        if (currentUser) {
-          // Intentar obtener información actualizada del usuario
+        // Verificar si hay token antes de intentar cualquier solicitud
+        if (authService.isAuthenticated()) {
           try {
             const updatedUser = await authService.getUserInfo();
             setUser(updatedUser);
@@ -37,13 +34,12 @@ export const AuthProvider = ({ children }) => {
               setActiveBusinessId(updatedUser.business_info.id);
             }
           } catch (error) {
-            console.error('Error al obtener información actualizada del usuario:', error);
-            setUser(currentUser);
-            
-            // Usar negocio del usuario en localStorage
-            if (currentUser?.business_info?.id) {
-              setActiveBusinessId(currentUser.business_info.id);
-            }
+            console.error('Error al obtener información del usuario:', error);
+            // Simplemente limpiar el contexto en caso de error
+            setUser(null);
+            setActiveBusinessId(null);
+            // Opcional: forzar logout si la token es inválida
+            authService.logout();
           }
         } else {
           setUser(null);
