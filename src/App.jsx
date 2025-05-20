@@ -11,6 +11,7 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Feed from './pages/Feed'; 
 import MainLayout from './layouts/MainLayout';
+import UserProfile from './pages/UserProfile';
 
 // Componente para rutas protegidas
 const ProtectedRoute = ({ children }) => {
@@ -95,6 +96,7 @@ function App() {
               <Route path="/inventory" element={<div>Inventario</div>} />
               <Route path="/users" element={<div>Usuarios</div>} />
               <Route path="/settings" element={<div>Configuración</div>} />
+              <Route path="/profile" element={<UserProfile />} />
             </Route>
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>

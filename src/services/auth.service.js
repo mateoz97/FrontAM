@@ -67,6 +67,17 @@ const authService = {
     return response.data;
   },
 
+  async updateUserProfile(userData) {
+    try {
+      console.log('Updating user profile with data:', userData);
+      const response = await api.patch('/accounts/user-profile/', userData);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating user profile:', error);
+      throw error;
+    }
+  },
+
   logout() {
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
