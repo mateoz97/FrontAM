@@ -243,15 +243,23 @@ const TopHeader = ({ onDrawerToggle, open }) => {
                 horizontal: 'right',
               }}
             >
-              <MenuItem onClick={handleMenuClose}>
+
+              <MenuItem onClick={() => { handleMenuClose(); navigate('/profile'); }}>
                 <ListItemIcon>
                   <AccountCircle fontSize="small" />
                 </ListItemIcon>
-                <ListItemText 
-                  primary="Mi Perfil"
-                  secondary={user?.email || ''}
-                />
+                <ListItemText primary="Mi Perfil" />
               </MenuItem>
+
+              {businessInfo && (
+                <Chip 
+                  icon={<BusinessIcon />}  // Usa BusinessIcon, no Business
+                  label={businessInfo.name}
+                  color="primary"
+                  variant="outlined"
+                  size="small"
+                />
+              )}
               
               {businessInfo && (
                 <MenuItem onClick={handleDashboard}>

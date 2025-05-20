@@ -155,11 +155,12 @@ const Feed = () => {
 
   // Actualizar cuando cambia el negocio activo
   useEffect(() => {
-    // Solo recargar posts si cambia el negocio activo
-    if (activeBusinessId) {
+    // Solo cargar datos si el usuario está autenticado
+    if (user) {
+      loadBusinesses();
       loadPosts();
     }
-  }, [activeBusinessId, loadPosts]);
+  }, [user]);
 
   const handleBusinessSelect = async (businessId) => {
     try {
