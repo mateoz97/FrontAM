@@ -15,17 +15,24 @@ const businessService = {
       const response = await api.get('/business/user-businesses/');
       console.log('Negocios obtenidos:', response.data);
       
-      // Si la respuesta no es un array, intentar extraer los datos
-      if (response.data && !Array.isArray(response.data)) {
-        // A veces la API devuelve {results: [...]} o {data: [...]}
-        if (response.data.results) return response.data.results;
-        if (response.data.data) return response.data.data;
+      // Verificar que la respuesta sea un array
+      if (Array.isArray(response.data)) {
+        return response.data;
+      } else if (response.data && response.data.results) {
+        return response.data.results;
+      } else {
+        console.warn('Formato de respuesta inesperado:', response.data);
+        return [];
       }
-      
-      return response.data || [];
     } catch (error) {
       console.error('Error al obtener negocios del usuario:', error);
-      // En caso de error, devolver array vacío
+      
+      // Si es un error 404, es probable que no hay endpoint
+      if (error.response?.status === 404) {
+        console.error('El endpoint user-businesses no existe. Verificar configuración de URLs.');
+      }
+      
+      // En caso de error, devolver array vacío para no romper la aplicación
       return [];
     }
   },
