@@ -267,10 +267,19 @@ const Feed = () => {
   }
 
   return (
-    <Box sx={{ pb: isMobile ? 7 : 0, backgroundColor: '#f0f2f5', minHeight: '100vh' }}>
+    <Box sx={{ pt: { xs: '80px', sm: '88px', md: '96px' }, backgroundColor: '#f0f2f5', minHeight: '100vh' }}>
       {/* TopHeader ya está incluido en MainLayout, no es necesario aquí */}
       
-      <Container maxWidth="md" sx={{ px: isMobile ? 2 : 3, py: 2, mt: 8 }}>
+      <Container 
+          maxWidth="md" 
+          sx={{ 
+            px: isMobile ? 2 : 3, 
+            py: 2, 
+            // CAMBIO: Aumentar margin-top específicamente para Feed
+            mt: { xs: 10, sm: 11, md: 12 }, // Más espacio en diferentes breakpoints
+            minHeight: 'calc(100vh - 120px)' // Altura mínima para evitar scroll innecesario
+          }}
+        >
         {/* Mostrar error si existe */}
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
