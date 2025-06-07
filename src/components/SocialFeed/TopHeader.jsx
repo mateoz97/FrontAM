@@ -204,18 +204,6 @@ const TopHeader = ({ onDrawerToggle, open }) => {
               {getUserFullName()}
             </Typography>
             
-            {/* Iconos de notificaciones y mensajes */}
-            <IconButton size="small" color="inherit">
-              <Badge badgeContent={3} color="error">
-                <Notifications />
-              </Badge>
-            </IconButton>
-            
-            <IconButton size="small" color="inherit">
-              <Badge badgeContent={1} color="error">
-                <Message />
-              </Badge>
-            </IconButton>
             
             {/* Avatar del usuario */}
             <Avatar 
