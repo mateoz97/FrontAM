@@ -1,4 +1,5 @@
-// src/components/SocialFeed/BusinessSwitcher.jsx
+// src/components/SocialFeed/BusinessSwitcher.jsx - Corrección del espaciado superior
+
 import React from 'react';
 import { 
   Box, 
@@ -19,16 +20,12 @@ import {
   Verified
 } from '@mui/icons-material';
 
-/**
- * Componente que muestra los negocios del usuario permitiendo cambiar entre ellos
- */
 const BusinessSwitcher = ({ businesses, activeBusinessId, onSelectBusiness, loading = false }) => {
   const theme = useTheme();
 
-  // Función para formatear el nombre del negocio (convertir guiones bajos a espacios)
+  // Función para formatear el nombre del negocio
   const formatBusinessName = (name) => {
     if (!name) return '';
-    // Convertir guiones bajos a espacios y capitalizar cada palabra
     return name
       .replace(/_/g, ' ')
       .split(' ')
@@ -98,7 +95,10 @@ const BusinessSwitcher = ({ businesses, activeBusinessId, onSelectBusiness, load
   return (
     <Box
       sx={{
-        mb: 3,
+        // CAMBIO: Agregar padding superior para evitar corte
+        pt: 2, // Padding top para separar del borde superior
+        pb: 1, // Padding bottom existente
+        mb: 3, // Margin bottom para separar del siguiente elemento
         display: 'flex',
         overflowX: 'auto',
         scrollSnapType: 'x mandatory',
@@ -118,8 +118,7 @@ const BusinessSwitcher = ({ businesses, activeBusinessId, onSelectBusiness, load
           }
         },
         gap: 2,
-        pb: 1,
-        px: 0.5
+        px: 0.5 // Padding horizontal para evitar corte en los lados
       }}
     >
       {loading ? (
@@ -174,6 +173,7 @@ const BusinessSwitcher = ({ businesses, activeBusinessId, onSelectBusiness, load
                 scrollSnapAlign: 'start',
                 position: 'relative',
                 overflow: 'hidden',
+                // CAMBIO: Asegurar que la sombra no se corte
                 '&::before': isActive ? {
                   content: '""',
                   position: 'absolute',
@@ -190,6 +190,8 @@ const BusinessSwitcher = ({ businesses, activeBusinessId, onSelectBusiness, load
                     color: theme.palette.primary.main
                   }
                 },
+                // CAMBIO: Asegurar que no haya overflow que cause cortes
+                boxShadow: isActive ? theme.shadows[8] : theme.shadows[2],
               }}
               onClick={() => onSelectBusiness(business.id)}
             >

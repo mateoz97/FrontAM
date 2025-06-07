@@ -94,10 +94,38 @@ const businessService = {
   async switchBusiness(businessId) {
     try {
       console.log(`Cambiando al negocio ID: ${businessId}`);
-      const response = await api.post('/business/switch-business/', { business_id: businessId });
+      
+      // Verificar que businessId sea válido
+      if (!businessId || isNaN(businessId)) {
+        throw new Error('ID de negocio inválido');
+      }
+      
+      // Asegurar que se envíe como número
+      const requestData = { 
+        business_id: parseInt(businessId) 
+      };
+      
+      console.log('Datos a enviar:', requestData);
+      
+      const response = await api.post('/business/switch-business/', requestData);
+      
+      console.log('Respuesta del servidor:', response.data);
       return response.data;
+      
     } catch (error) {
       console.error(`Error al cambiar al negocio ID ${businessId}:`, error);
+      
+      // Logging más detallado del error
+      if (error.response) {
+        console.error('Response data:', error.response.data);
+        console.error('Response status:', error.response.status);
+        console.error('Response headers:', error.response.headers);
+      } else if (error.request) {
+        console.error('Request data:', error.request);
+      } else {
+        console.error('Error message:', error.message);
+      }
+      
       throw error;
     }
   },
@@ -181,4 +209,5 @@ const businessService = {
   }
 };
 
+// IMPORTANTE: Exportación por defecto
 export default businessService;

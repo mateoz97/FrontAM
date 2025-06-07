@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box, Container, CircularProgress, useTheme, useMediaQuery,
-  Paper, Button, Chip, Typography, Alert, Snackbar
+  Paper, Button, Chip, Typography, Alert, Snackbar, Toolbar
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { Add as AddIcon, Search as SearchIcon } from '@mui/icons-material';
@@ -267,33 +267,33 @@ const Feed = () => {
   }
 
   return (
-    <Box sx={{ pt: { xs: '80px', sm: '88px', md: '96px' }, backgroundColor: '#f0f2f5', minHeight: '100vh' }}>
+    <Box sx={{ pb: isMobile ? 7 : 0, backgroundColor: '#f0f2f5', minHeight: '100vh' }}>
       {/* TopHeader ya está incluido en MainLayout, no es necesario aquí */}
       
       <Container 
           maxWidth="md" 
           sx={{ 
             px: isMobile ? 2 : 3, 
-            py: 2, 
-            // CAMBIO: Aumentar margin-top específicamente para Feed
-            mt: { xs: 10, sm: 11, md: 12 }, // Más espacio en diferentes breakpoints
-            minHeight: 'calc(100vh - 120px)' // Altura mínima para evitar scroll innecesario
+            py: 0, // CAMBIO: Remover padding vertical que puede causar cortes
+            // CAMBIO: Agregar un pequeño margin-top para separar del Toolbar
+            mt: 1
           }}
         >
+          
         {/* Mostrar error si existe */}
         {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
         
         {/* BusinessSwitcher - Solo si el usuario tiene negocios */}
         <BusinessSwitcher 
-          businesses={businesses}
-          activeBusinessId={activeBusinessId}
-          onSelectBusiness={handleBusinessSelect}
-          loading={loadingBusinesses}
-        />
+            businesses={businesses}
+            activeBusinessId={activeBusinessId}
+            onSelectBusiness={handleBusinessSelect}
+            loading={loadingBusinesses}
+          />
         
         {/* Banner para usuarios sin negocio - Solo mostrar si no hay negocios y ya terminó de cargar */}
         {!loadingBusinesses && (!businesses || businesses.length === 0) && <NoBusinessBanner navigate={navigate} />}
@@ -302,63 +302,63 @@ const Feed = () => {
         <CreatePost onOpenModal={handleCreatePost} user={user} />
         
         {/* Posts Feed */}
-        {loadingPosts && posts.length === 0 ? (
-          // Mostrar skeletons mientras carga
-          Array.from(new Array(3)).map((_, index) => (
-            <Paper key={`skeleton-${index}`} sx={{ p: 3, mb: 3, borderRadius: 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <CircularProgress size={20} sx={{ mr: 2 }} />
-                <Typography variant="body2">Cargando publicaciones...</Typography>
-              </Box>
+          {loadingPosts && posts.length === 0 ? (
+            // Mostrar skeletons mientras carga
+            Array.from(new Array(3)).map((_, index) => (
+              <Paper key={`skeleton-${index}`} sx={{ p: 3, mb: 3, borderRadius: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                  <CircularProgress size={20} sx={{ mr: 2 }} />
+                  <Typography variant="body2">Cargando publicaciones...</Typography>
+                </Box>
+              </Paper>
+            ))
+          ) : posts.length > 0 ? (
+            // Mostrar posts
+            posts.map((post) => (
+              <PostCard 
+                key={post.id} 
+                post={post}
+                onLike={() => handleLike(post.id)}
+                onComment={(comment) => handleComment(post.id, comment)}
+                onShare={() => handleShare(post.id)}
+              />
+            ))
+          ) : (
+            // No hay posts
+            <Paper sx={{ p: 4, textAlign: 'center', borderRadius: 2 }}>
+              <Typography variant="h6" color="textSecondary">
+                No hay publicaciones disponibles
+              </Typography>
+              <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+                ¡Sé el primero en publicar algo!
+              </Typography>
             </Paper>
-          ))
-        ) : posts.length > 0 ? (
-          // Mostrar posts
-          posts.map((post) => (
-            <PostCard 
-              key={post.id} 
-              post={post}
-              onLike={() => handleLike(post.id)}
-              onComment={(comment) => handleComment(post.id, comment)}
-              onShare={() => handleShare(post.id)}
-            />
-          ))
-        ) : (
-          // No hay posts
-          <Paper sx={{ p: 4, textAlign: 'center', borderRadius: 2 }}>
-            <Typography variant="h6" color="textSecondary">
-              No hay publicaciones disponibles
-            </Typography>
-            <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
-              ¡Sé el primero en publicar algo!
-            </Typography>
-          </Paper>
-        )}
-      </Container>
+          )}
+        </Container>
       
       {/* Bottom Navigation - Solo en móvil */}
-      {isMobile && <BottomNavigation />}
-      
-      {/* Create Post Modal */}
-      <CreatePostModal
-        open={createModalOpen}
-        onClose={() => setCreateModalOpen(false)}
-        onPostCreated={handlePostCreated}
-        activeBusinessId={activeBusinessId}
-      />
+        {isMobile && <BottomNavigation />}
+        
+        {/* Create Post Modal */}
+        <CreatePostModal
+          open={createModalOpen}
+          onClose={() => setCreateModalOpen(false)}
+          onPostCreated={handlePostCreated}
+          activeBusinessId={activeBusinessId}
+        />
       
       {/* Snackbar para mensajes */}
       <Snackbar 
-        open={snackbar.open} 
-        autoHideDuration={4000} 
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert 
-          severity={snackbar.severity} 
-          variant="filled"
+          open={snackbar.open} 
+          autoHideDuration={4000} 
           onClose={() => setSnackbar({ ...snackbar, open: false })}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
         >
+          <Alert 
+            severity={snackbar.severity} 
+            variant="filled"
+            onClose={() => setSnackbar({ ...snackbar, open: false })}
+          >
           {snackbar.message}
         </Alert>
       </Snackbar>
