@@ -36,7 +36,8 @@ import {
   Business as BusinessIcon,
   Badge as BadgeIcon,
   Star,
-  Verified
+  Verified,
+  Store
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -47,6 +48,7 @@ const TopHeader = ({ onDrawerToggle, open }) => {
   const location = useLocation();
   const theme = useTheme();
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   
   const [anchorEl, setAnchorEl] = useState(null);
   const openMenu = Boolean(anchorEl);
@@ -110,6 +112,14 @@ const TopHeader = ({ onDrawerToggle, open }) => {
       .join(' ');
   };
 
+  // Función para obtener el nombre a mostrar en el header
+  const getHeaderTitle = () => {
+    if (businessInfo && businessInfo.name) {
+      return formatBusinessName(businessInfo.name);
+    }
+    return 'Control de Restaurante'; // Fallback si no hay negocio
+  };
+
   return (
     <AppBar
       position="fixed"
@@ -121,19 +131,17 @@ const TopHeader = ({ onDrawerToggle, open }) => {
         }),
         background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
         boxShadow: theme.shadows[4],
-        // CAMBIO: Altura fija para el AppBar
-        minHeight: { xs: 64, sm: 70 }, // Altura consistente
+        minHeight: { xs: 64, sm: 70 },
       }}
     >
       <Toolbar sx={{ 
           justifyContent: 'space-between', 
           px: { xs: 2, sm: 3 },
-          // CAMBIO: Altura mínima del Toolbar
-          minHeight: { xs: 64, sm: 70 } // Coincidir con AppBar
+          minHeight: { xs: 64, sm: 70 }
         }}
       >
-        {/* Sección izquierda: Menú, logo y nombre */}
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+        {/* Sección izquierda: Menú y nombre del negocio */}
+        <Box sx={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
           <IconButton
             color="inherit"
             aria-label={open ? "close drawer" : "open drawer"}
@@ -154,37 +162,77 @@ const TopHeader = ({ onDrawerToggle, open }) => {
             {open ? <CloseIcon /> : <MenuIcon />}
           </IconButton>
           
-          <Restaurant 
-            sx={{ 
-              color: 'white', 
-              fontSize: 32,
-              animation: 'pulse 3s infinite',
-              '@keyframes pulse': {
-                '0%': { opacity: 1, transform: 'scale(1)' },
-                '50%': { opacity: 0.8, transform: 'scale(1.05)' },
-                '100%': { opacity: 1, transform: 'scale(1)' }
-              },
-              mr: 2,
-              filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))'
-            }} 
-          />
-          <Typography 
-            variant="h6" 
-            noWrap 
-            component="div" 
-            sx={{ 
-              display: { xs: 'none', sm: 'block' },
-              fontWeight: 700,
-              mr: 3,
-              background: 'linear-gradient(45deg, #fff, #f0f8ff)',
-              backgroundClip: 'text',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.1))'
-            }}
-          >
-            Control de Restaurante
-          </Typography>
+          {/* CAMBIO: Mostrar icono del negocio y nombre en lugar del logo genérico */}
+          <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0, flex: 1 }}>
+            {businessInfo ? (
+              // Si hay negocio, mostrar icono de negocio
+              <Store 
+                sx={{ 
+                  color: 'white', 
+                  fontSize: { xs: 28, sm: 32 },
+                  mr: { xs: 1, sm: 2 },
+                  filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))',
+                  animation: businessInfo.is_owner ? 'pulse 3s infinite' : 'none',
+                  '@keyframes pulse': {
+                    '0%': { opacity: 1, transform: 'scale(1)' },
+                    '50%': { opacity: 0.8, transform: 'scale(1.05)' },
+                    '100%': { opacity: 1, transform: 'scale(1)' }
+                  }
+                }} 
+              />
+            ) : (
+              // Si no hay negocio, mostrar logo genérico
+              <Restaurant 
+                sx={{ 
+                  color: 'white', 
+                  fontSize: { xs: 28, sm: 32 },
+                  mr: { xs: 1, sm: 2 },
+                  filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))'
+                }} 
+              />
+            )}
+            
+            <Box sx={{ minWidth: 0, flex: 1 }}>
+              {/* Nombre principal */}
+              <Typography 
+                variant="h6" 
+                noWrap 
+                component="div" 
+                sx={{ 
+                  fontWeight: 700,
+                  fontSize: { xs: '1rem', sm: '1.25rem' },
+                  lineHeight: 1.2,
+                  background: businessInfo 
+                    ? 'linear-gradient(45deg, #fff, #f0f8ff)'
+                    : 'linear-gradient(45deg, #fff, #e3f2fd)',
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.1))',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }}
+              >
+                {getHeaderTitle()}
+              </Typography>
+              
+              {/* Subtítulo con rol si hay negocio */}
+              {businessInfo && roleInfo && (
+                <Typography 
+                  variant="caption" 
+                  sx={{ 
+                    display: { xs: 'none', sm: 'block' },
+                    color: alpha(theme.palette.common.white, 0.8),
+                    fontSize: '0.75rem',
+                    fontWeight: 500,
+                    lineHeight: 1
+                  }}
+                >
+                  {businessInfo.is_owner ? 'Propietario' : roleInfo.name}
+                </Typography>
+              )}
+            </Box>
+          </Box>
         </Box>
         
         {/* Sección central: Botones de navegación */}
@@ -235,56 +283,28 @@ const TopHeader = ({ onDrawerToggle, open }) => {
           </Button>
         </Box>
         
-        {/* Sección derecha: Notificaciones, usuario y negocio */}
+        {/* Sección derecha: Usuario y opciones */}
         <Fade in={!open} timeout={300}>
           <Stack direction="row" spacing={1.5} alignItems="center">
-            {/* Mostrar información de negocio y rol en el header */}
-            {businessInfo && !isTablet && (
-              <Chip 
-                icon={<BusinessIcon />}
-                label={formatBusinessName(businessInfo.name)}
-                size="small"
-                sx={{ 
-                  display: { xs: 'none', sm: 'flex' },
-                  backgroundColor: alpha(theme.palette.common.white, 0.15),
-                  color: 'white',
-                  fontWeight: 600,
-                  backdropFilter: 'blur(10px)',
-                  border: `1px solid ${alpha(theme.palette.common.white, 0.2)}`,
-                  '& .MuiChip-icon': {
-                    color: 'white'
-                  }
-                }}
-              />
-            )}
-            {roleInfo && !isTablet && (
-              <Chip 
-                icon={<BadgeIcon />}
-                label={roleInfo.name}
-                size="small"
-                sx={{ 
-                  display: { xs: 'none', sm: 'flex' },
-                  backgroundColor: alpha(theme.palette.secondary.main, 0.9),
-                  color: 'white',
-                  fontWeight: 600,
-                  '& .MuiChip-icon': {
-                    color: 'white'
-                  }
-                }}
-              />
-            )}
+            {/* CAMBIO: Remover chips de negocio ya que ahora está en el título */}
             
-            {/* Nombre de usuario */}
-            <Typography 
-              variant="body2" 
-              sx={{ 
-                display: { xs: 'none', sm: 'block' },
-                fontWeight: 500,
-                color: alpha(theme.palette.common.white, 0.9)
-              }}
-            >
-              {getUserFullName()}
-            </Typography>
+            {/* Nombre de usuario - solo en desktop */}
+            {!isMobile && (
+              <Typography 
+                variant="body2" 
+                sx={{ 
+                  display: { xs: 'none', md: 'block' },
+                  fontWeight: 500,
+                  color: alpha(theme.palette.common.white, 0.9),
+                  maxWidth: '120px',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                {getUserFullName()}
+              </Typography>
+            )}
             
             
             {/* Avatar del usuario */}
@@ -306,7 +326,7 @@ const TopHeader = ({ onDrawerToggle, open }) => {
               {getInitials()}
             </Avatar>
             
-            {/* Menú desplegable mejorado */}
+            {/* Menú desplegable - mantener igual */}
             <Menu
               anchorEl={anchorEl}
               open={openMenu}
@@ -368,7 +388,7 @@ const TopHeader = ({ onDrawerToggle, open }) => {
                   </Box>
                 </Box>
                 
-                {/* Chips de negocio y rol */}
+                {/* Chips de negocio y rol en el menú */}
                 <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
                   {businessInfo && (
                     <Chip 
