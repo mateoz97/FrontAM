@@ -247,21 +247,47 @@ const Feed = () => {
 
   const handleComment = async (postId, comment) => {
     try {
-      // Enviar comentario al servidor
-      await postService.commentPost(postId, comment);
+      console.log('💬 Enviando comentario al post:', postId, 'Comentario:', comment);
       
-      // Actualizar la publicación (incrementar contador de comentarios)
-      setPosts(posts.map(post => 
-        post.id === postId 
-          ? { ...post, comments: (post.comments || 0) + 1 }
-          : post
-      ));
+      // ✅ CORRECCIÓN: Enviar comentario al servidor y retornar el resultado
+      const newComment = await postService.commentPost(postId, comment);
+      
+      console.log('✅ Comentario creado:', newComment);
+      
+      // ✅ Actualizar el contador de comentarios en el post
+      setPosts(prevPosts => 
+        prevPosts.map(post => 
+          post.id === postId 
+            ? { 
+                ...post, 
+                comments: (post.comments || 0) + 1,
+                // Agregar el comentario a la lista si existe
+                comments_list: newComment ? [newComment, ...(post.comments_list || [])] : post.comments_list
+              }
+            : post
+        )
+      );
       
       // Mostrar mensaje de éxito
-      setSnackbar({ open: true, message: 'Comentario añadido', severity: 'success' });
+      setSnackbar({ 
+        open: true, 
+        message: 'Comentario añadido', 
+        severity: 'success' 
+      });
+      
+      // ✅ IMPORTANTE: Retornar el comentario para PostCard
+      return newComment;
+      
     } catch (error) {
-      console.error('Error al comentar:', error);
-      setSnackbar({ open: true, message: 'Error al añadir comentario', severity: 'error' });
+      console.error('❌ Error al comentar:', error);
+      setSnackbar({ 
+        open: true, 
+        message: 'Error al añadir comentario', 
+        severity: 'error' 
+      });
+      
+      // ✅ Retornar null en caso de error
+      return null;
     }
   };
 
@@ -340,7 +366,7 @@ const Feed = () => {
                 key={post.id} 
                 post={post}
                 onLike={() => handleLike(post.id)}
-                onComment={(comment) => handleComment(post.id, comment)}
+                onComment={(comment) => handleComment(post.id, comment)} // ✅ Retorna Promise
                 onShare={() => handleShare(post.id)}
               />
             ))
