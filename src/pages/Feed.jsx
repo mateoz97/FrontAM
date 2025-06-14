@@ -189,18 +189,39 @@ const Feed = () => {
 
   const handlePostCreated = async (newPost) => {
     try {
-      // Enviar datos al servidor
+      console.log('📝 Creando post con datos:', newPost);
+
       const createdPost = await postService.createPost({
         content: newPost.content,
         image: newPost.image,
         businessId: activeBusinessId
       });
       
-      // Añadir nueva publicación al principio de la lista
-      setPosts(prevPosts => [createdPost, ...prevPosts]);
+      console.log('✅ Post creado en servidor:', createdPost);
+
+
+      if (createdPost && createdPost.id) {
+        setPosts(prevPosts => {
+          // Verificar si el post ya existe para evitar duplicados
+          const postExists = prevPosts.some(post => post.id === createdPost.id);
+          
+          if (!postExists) {
+            console.log('➕ Agregando post al estado local');
+            return [createdPost, ...prevPosts];
+          } else {
+            console.log('⚠️ Post ya existe, no se agrega duplicado');
+            return prevPosts;
+          }
+        });
       
-      // Mostrar mensaje de éxito
-      setSnackbar({ open: true, message: 'Publicación creada correctamente', severity: 'success' });
+        setSnackbar({ 
+          open: true, 
+          message: 'Publicación creada correctamente', 
+          severity: 'success' 
+        });
+      } else {
+      throw new Error('Respuesta del servidor inválida');
+    }
     } catch (error) {
       console.error('Error al crear publicación:', error);
       setSnackbar({ open: true, message: 'Error al crear la publicación', severity: 'error' });
