@@ -47,7 +47,6 @@ const TopHeader = ({ onDrawerToggle, open }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
-  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   
   const [anchorEl, setAnchorEl] = useState(null);

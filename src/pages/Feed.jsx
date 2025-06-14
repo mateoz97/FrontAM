@@ -1,5 +1,6 @@
-// src/pages/Feed.jsx (continuación)
-import React, { useState, useEffect, useCallback } from 'react';
+// src/pages/Feed.jsx - Versión corregida sin duplicaciones
+
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Box, Container, CircularProgress, useTheme, useMediaQuery,
   Paper, Button, Chip, Typography, Alert, Snackbar, Toolbar
@@ -21,7 +22,6 @@ import postService from '../services/post.service';
 
 // Componente para mostrar cuando el usuario no tiene negocio
 const NoBusinessBanner = ({ navigate }) => {
-
   return (
     <Paper 
       elevation={3} 
@@ -79,6 +79,10 @@ const Feed = () => {
   const [error, setError] = useState(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
 
+  // ✅ CORRECCIÓN: Usar ref para evitar múltiples cargas
+  const isLoadingRef = useRef(false);
+  const hasLoadedRef = useRef(false);
+
   // Función para cargar los negocios del usuario
   const loadBusinesses = useCallback(async () => {
     try {
@@ -89,11 +93,9 @@ const Feed = () => {
       if (Array.isArray(businessesData)) {
         setBusinesses(businessesData);
       } else if (businessesData && typeof businessesData === 'object') {
-        // Intentar extraer datos si viene en formato diferente
         if (businessesData.results) {
           setBusinesses(businessesData.results);
         } else {
-          // Convertir objeto a array si es necesario
           const businessArray = Object.values(businessesData);
           if (Array.isArray(businessArray)) {
             setBusinesses(businessArray);
@@ -114,168 +116,203 @@ const Feed = () => {
   }, []);
 
   // Función para cargar las publicaciones
-  const loadPosts = useCallback(async () => {
+  const loadPosts = useCallback(async (forceReload = false) => {
+    // ✅ PREVENIR múltiples cargas simultáneas
+    if (isLoadingRef.current && !forceReload) {
+      console.log('⏳ Ya se están cargando posts, omitiendo...');
+      return;
+    }
+
+    isLoadingRef.current = true;
+    
     try {
+      console.log('📥 Cargando posts del feed...');
       setLoadingPosts(true);
+      
       const postsData = await postService.getFeed();
       
+      console.log('📊 Posts recibidos:', postsData);
+      
       // Verificar el formato de la respuesta
+      let processedPosts = [];
       if (Array.isArray(postsData)) {
-        setPosts(postsData);
+        processedPosts = postsData;
       } else if (postsData && typeof postsData === 'object') {
-        // Intentar extraer datos si viene en formato diferente
         if (postsData.results) {
-          setPosts(postsData.results);
+          processedPosts = postsData.results;
         } else {
-          // Convertir objeto a array si es necesario
           const postsArray = Object.values(postsData);
           if (Array.isArray(postsArray)) {
-            setPosts(postsArray);
-          } else {
-            setPosts([]);
+            processedPosts = postsArray;
           }
         }
-      } else {
-        setPosts([]);
       }
+      
+      // ✅ CORRECCIÓN: Solo actualizar si hay cambios o es forzado
+      setPosts(prevPosts => {
+        if (forceReload || prevPosts.length === 0) {
+          console.log('🔄 Actualizando posts completos');
+          return processedPosts;
+        }
+        
+        // Verificar si hay posts nuevos
+        const newPosts = processedPosts.filter(newPost => 
+          !prevPosts.some(existingPost => existingPost.id === newPost.id)
+        );
+        
+        if (newPosts.length > 0) {
+          console.log(`➕ Agregando ${newPosts.length} posts nuevos`);
+          return [...newPosts, ...prevPosts];
+        }
+        
+        console.log('✅ No hay posts nuevos');
+        return prevPosts;
+      });
+      
     } catch (error) {
-      console.error('Error al cargar publicaciones:', error);
-      setError('Error al cargar publicaciones. Intenta de nuevo más tarde.');
-      setPosts([]);
+      console.error('❌ Error al cargar publicaciones:', error);
+      if (!hasLoadedRef.current) {
+        setError('Error al cargar publicaciones. Intenta de nuevo más tarde.');
+      }
     } finally {
       setLoadingPosts(false);
+      isLoadingRef.current = false;
+      hasLoadedRef.current = true;
     }
   }, []);
 
-  // Cargar datos al montar el componente
+  // ✅ CORRECCIÓN: Cargar datos solo una vez al montar
   useEffect(() => {
-    loadBusinesses();
-    loadPosts();
-  }, [loadBusinesses, loadPosts]);
+    let isMounted = true;
+    
+    const initializeData = async () => {
+      if (!user || hasLoadedRef.current) return;
+      
+      console.log('🚀 Inicializando datos del Feed...');
+      
+      try {
+        await Promise.all([
+          loadBusinesses(),
+          loadPosts(true) // Forzar primera carga
+        ]);
+      } catch (error) {
+        console.error('❌ Error al inicializar datos:', error);
+      }
+    };
 
-  // Actualizar cuando cambia el negocio activo
-  useEffect(() => {
-    // Solo cargar datos si el usuario está autenticado
-    if (user) {
-      loadBusinesses();
-      loadPosts();
+    if (isMounted) {
+      initializeData();
     }
-  }, [user]);
 
-  const handleBusinessSelect = async (businessId) => {
+    return () => {
+      isMounted = false;
+    };
+  }, [user, user?.id, loadBusinesses, loadPosts]); // ✅ Incluir dependencias requeridas
+
+  // ✅ CORRECCIÓN: Manejar cambio de negocio sin recargar posts duplicados
+  const handleBusinessSelect = useCallback(async (businessId) => {
     try {
-      // Mostrar carga mientras se cambia de negocio
       setLoadingPosts(true);
       setSnackbar({ open: true, message: 'Cambiando de negocio...', severity: 'info' });
       
-      // Llamar al servicio para cambiar de negocio
       await switchBusiness(businessId);
       
-      // Recargar posts para el nuevo negocio
-      await loadPosts();
+      // ✅ Solo recargar posts después de cambiar negocio
+      await loadPosts(true);
       
       setSnackbar({ open: true, message: 'Negocio cambiado correctamente', severity: 'success' });
     } catch (error) {
-      console.error('Error al cambiar de negocio:', error);
+      console.error('❌ Error al cambiar de negocio:', error);
       setSnackbar({ open: true, message: 'Error al cambiar de negocio', severity: 'error' });
     } finally {
       setLoadingPosts(false);
     }
-  };
+  }, [switchBusiness, loadPosts]);
 
-  const handleCreatePost = () => {
+  const handleCreatePost = useCallback(() => {
     setCreateModalOpen(true);
-  };
+  }, []);
 
-  const handlePostCreated = async (newPost) => {
+  // ✅ CORRECCIÓN: Crear post sin duplicar
+  const handlePostCreated = useCallback(async (newPostData) => {
     try {
-      console.log('📝 Creando post con datos:', newPost);
-
+      console.log('📝 Creando post con datos:', newPostData);
+      
       const createdPost = await postService.createPost({
-        content: newPost.content,
-        image: newPost.image,
+        content: newPostData.content,
+        image: newPostData.image,
         businessId: activeBusinessId
       });
       
       console.log('✅ Post creado en servidor:', createdPost);
-
-
+      
       if (createdPost && createdPost.id) {
         setPosts(prevPosts => {
-          // Verificar si el post ya existe para evitar duplicados
-          const postExists = prevPosts.some(post => post.id === createdPost.id);
-          
-          if (!postExists) {
-            console.log('➕ Agregando post al estado local');
+          // ✅ Verificar que no exista ya
+          const exists = prevPosts.some(post => post.id === createdPost.id);
+          if (!exists) {
+            console.log('➕ Agregando nuevo post al feed');
             return [createdPost, ...prevPosts];
-          } else {
-            console.log('⚠️ Post ya existe, no se agrega duplicado');
-            return prevPosts;
           }
+          console.log('⚠️ Post ya existe, no duplicar');
+          return prevPosts;
         });
-      
+        
         setSnackbar({ 
           open: true, 
           message: 'Publicación creada correctamente', 
           severity: 'success' 
         });
-      } else {
-      throw new Error('Respuesta del servidor inválida');
-    }
+      }
+      
     } catch (error) {
-      console.error('Error al crear publicación:', error);
-      setSnackbar({ open: true, message: 'Error al crear la publicación', severity: 'error' });
+      console.error('❌ Error al crear publicación:', error);
+      setSnackbar({ 
+        open: true, 
+        message: 'Error al crear la publicación', 
+        severity: 'error' 
+      });
     }
     
-    // Cerrar modal
     setCreateModalOpen(false);
-  };
+  }, [activeBusinessId]);
 
-  const handleLike = async (postId) => {
+  const handleLike = useCallback(async (postId) => {
     try {
       const result = await postService.likePost(postId);
-      setPosts(posts.map(post => 
+      setPosts(prevPosts => prevPosts.map(post => 
         post.id === postId 
           ? { ...post, is_liked: result.liked, likes: result.likes_count || post.likes }
           : post
       ));
     } catch (error) {
-      console.error('Error al dar like:', error);
+      console.error('❌ Error al dar like:', error);
       setSnackbar({ open: true, message: 'Error al actualizar like', severity: 'error' });
     }
-  };
+  }, []);
 
-  const handleComment = async (postId, comment) => {
+  const handleComment = useCallback(async (postId, comment) => {
     try {
-      console.log('💬 Enviando comentario al post:', postId, 'Comentario:', comment);
-      
-      // ✅ CORRECCIÓN: Enviar comentario al servidor y retornar el resultado
       const newComment = await postService.commentPost(postId, comment);
       
-      console.log('✅ Comentario creado:', newComment);
-      
-      // ✅ Actualizar el contador de comentarios en el post
       setPosts(prevPosts => 
         prevPosts.map(post => 
           post.id === postId 
             ? { 
                 ...post, 
                 comments: (post.comments || 0) + 1,
-                // Agregar el comentario a la lista si existe
                 comments_list: newComment ? [newComment, ...(post.comments_list || [])] : post.comments_list
               }
             : post
         )
       );
       
-      // Mostrar mensaje de éxito
       setSnackbar({ 
         open: true, 
         message: 'Comentario añadido', 
         severity: 'success' 
       });
-      
-      // ✅ IMPORTANTE: Retornar el comentario para PostCard
+
       return newComment;
       
     } catch (error) {
@@ -285,22 +322,16 @@ const Feed = () => {
         message: 'Error al añadir comentario', 
         severity: 'error' 
       });
-      
-      // ✅ Retornar null en caso de error
       return null;
     }
-  };
+  }, []);
 
-  const handleShare = () => {
-    // Por ahora solo mostramos un mensaje
+  const handleShare = useCallback(() => {
     setSnackbar({ open: true, message: 'Funcionalidad de compartir en desarrollo', severity: 'info' });
-  };
+  }, []);
 
-  // Verificar si tenemos datos de negocio en el contexto
-  // Removed unused variable 'businessInfo'
-  
-  // Mostrar loading si ambos están cargando
-  if (loadingBusinesses && loadingPosts && posts.length === 0) {
+  // Mostrar loading solo en la primera carga
+  if (loadingBusinesses && loadingPosts && !hasLoadedRef.current) {
     return (
       <Box sx={{ 
         display: 'flex', 
@@ -315,97 +346,95 @@ const Feed = () => {
 
   return (
     <Box sx={{ pb: isMobile ? 7 : 0, backgroundColor: '#f0f2f5', minHeight: '100vh' }}>
-      {/* TopHeader ya está incluido en MainLayout, no es necesario aquí */}
-      
       <Container 
-          maxWidth="md" 
-          sx={{ 
-            px: isMobile ? 2 : 3, 
-            py: 0, // CAMBIO: Remover padding vertical que puede causar cortes
-            // CAMBIO: Agregar un pequeño margin-top para separar del Toolbar
-            mt: 1
-          }}
-        >
-          
+        maxWidth="md" 
+        sx={{ 
+          px: isMobile ? 2 : 3, 
+          py: 0,
+          mt: 1
+        }}
+      >
         {/* Mostrar error si existe */}
         {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
         
-        {/* BusinessSwitcher - Solo si el usuario tiene negocios */}
+        {/* BusinessSwitcher */}
         <BusinessSwitcher 
-            businesses={businesses}
-            activeBusinessId={activeBusinessId}
-            onSelectBusiness={handleBusinessSelect}
-            loading={loadingBusinesses}
-          />
+          businesses={businesses}
+          activeBusinessId={activeBusinessId}
+          onSelectBusiness={handleBusinessSelect}
+          loading={loadingBusinesses}
+        />
         
-        {/* Banner para usuarios sin negocio - Solo mostrar si no hay negocios y ya terminó de cargar */}
-        {!loadingBusinesses && (!businesses || businesses.length === 0) && <NoBusinessBanner navigate={navigate} />}
+        {/* Banner para usuarios sin negocio */}
+        {!loadingBusinesses && (!businesses || businesses.length === 0) && (
+          <NoBusinessBanner navigate={navigate} />
+        )}
         
         {/* Create Post */}
         <CreatePost onOpenModal={handleCreatePost} user={user} />
         
         {/* Posts Feed */}
-          {loadingPosts && posts.length === 0 ? (
-            // Mostrar skeletons mientras carga
-            Array.from(new Array(3)).map((_, index) => (
-              <Paper key={`skeleton-${index}`} sx={{ p: 3, mb: 3, borderRadius: 2 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <CircularProgress size={20} sx={{ mr: 2 }} />
-                  <Typography variant="body2">Cargando publicaciones...</Typography>
-                </Box>
-              </Paper>
-            ))
-          ) : posts.length > 0 ? (
-            // Mostrar posts
-            posts.map((post) => (
-              <PostCard 
-                key={post.id} 
-                post={post}
-                onLike={() => handleLike(post.id)}
-                onComment={(comment) => handleComment(post.id, comment)} // ✅ Retorna Promise
-                onShare={() => handleShare(post.id)}
-              />
-            ))
-          ) : (
-            // No hay posts
-            <Paper sx={{ p: 4, textAlign: 'center', borderRadius: 2 }}>
-              <Typography variant="h6" color="textSecondary">
-                No hay publicaciones disponibles
-              </Typography>
-              <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
-                ¡Sé el primero en publicar algo!
-              </Typography>
+        {loadingPosts && posts.length === 0 ? (
+          // Mostrar skeleton solo si no hay posts
+          Array.from(new Array(3)).map((_, index) => (
+            <Paper key={`skeleton-${index}`} sx={{ p: 3, mb: 3, borderRadius: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <CircularProgress size={20} sx={{ mr: 2 }} />
+                <Typography variant="body2">Cargando publicaciones...</Typography>
+              </Box>
             </Paper>
-          )}
-        </Container>
+          ))
+        ) : posts.length > 0 ? (
+          // Mostrar posts
+          posts.map((post) => (
+            <PostCard 
+              key={`post-${post.id}`} // ✅ Key único y descriptivo
+              post={post}
+              onLike={() => handleLike(post.id)}
+              onComment={(comment) => handleComment(post.id, comment)}
+              onShare={() => handleShare(post.id)}
+            />
+          ))
+        ) : (
+          // No hay posts
+          <Paper sx={{ p: 4, textAlign: 'center', borderRadius: 2 }}>
+            <Typography variant="h6" color="textSecondary">
+              No hay publicaciones disponibles
+            </Typography>
+            <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+              ¡Sé el primero en publicar algo!
+            </Typography>
+          </Paper>
+        )}
+      </Container>
       
       {/* Bottom Navigation - Solo en móvil */}
-        {isMobile && <BottomNavigation />}
-        
-        {/* Create Post Modal */}
-        <CreatePostModal
-          open={createModalOpen}
-          onClose={() => setCreateModalOpen(false)}
-          onPostCreated={handlePostCreated}
-          activeBusinessId={activeBusinessId}
-        />
+      {isMobile && <BottomNavigation />}
+      
+      {/* Create Post Modal */}
+      <CreatePostModal
+        open={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        onPostCreated={handlePostCreated}
+        activeBusinessId={activeBusinessId}
+      />
       
       {/* Snackbar para mensajes */}
       <Snackbar 
-          open={snackbar.open} 
-          autoHideDuration={4000} 
+        open={snackbar.open} 
+        autoHideDuration={4000} 
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert 
+          severity={snackbar.severity} 
+          variant="filled"
           onClose={() => setSnackbar({ ...snackbar, open: false })}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
         >
-          <Alert 
-            severity={snackbar.severity} 
-            variant="filled"
-            onClose={() => setSnackbar({ ...snackbar, open: false })}
-          >
           {snackbar.message}
         </Alert>
       </Snackbar>
