@@ -233,20 +233,15 @@ const Feed = () => {
     setCreateModalOpen(true);
   }, []);
 
-  // ✅ CORRECCIÓN: Crear post sin duplicar
-  const handlePostCreated = useCallback(async (newPostData) => {
+  // ✅ FUNCIÓN CORREGIDA - Reemplazar esta función en tu Feed.jsx
+  const handlePostCreated = useCallback(async (postData) => {
     try {
-      console.log('📝 Creando post con datos:', newPostData);
+      console.log('📝 Post creado recibido:', postData);
       
-      const createdPost = await postService.createPost({
-        content: newPostData.content,
-        image: newPostData.image,
-        businessId: activeBusinessId
-      });
-      
-      console.log('✅ Post creado en servidor:', createdPost);
-      
-      if (createdPost && createdPost.id) {
+      // ✅ CORRECCIÓN: El post ya fue creado en el modal, solo agregarlo al estado
+      if (postData.createdPost && postData.createdPost.id) {
+        const createdPost = postData.createdPost;
+        
         setPosts(prevPosts => {
           // ✅ Verificar que no exista ya
           const exists = prevPosts.some(post => post.id === createdPost.id);
@@ -263,10 +258,17 @@ const Feed = () => {
           message: 'Publicación creada correctamente', 
           severity: 'success' 
         });
+      } else {
+        console.error('❌ No se recibió el post creado correctamente');
+        setSnackbar({ 
+          open: true, 
+          message: 'Error al procesar la publicación', 
+          severity: 'error' 
+        });
       }
       
     } catch (error) {
-      console.error('❌ Error al crear publicación:', error);
+      console.error('❌ Error al procesar publicación:', error);
       setSnackbar({ 
         open: true, 
         message: 'Error al crear la publicación', 
@@ -275,7 +277,7 @@ const Feed = () => {
     }
     
     setCreateModalOpen(false);
-  }, [activeBusinessId]);
+  }, []);
 
   const handleLike = useCallback(async (postId) => {
     try {
