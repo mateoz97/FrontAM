@@ -1,4 +1,4 @@
-// src/App.jsx
+// src/App.jsx - Versión actualizada con las nuevas páginas
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
@@ -13,6 +13,12 @@ import Feed from './pages/Feed';
 import MainLayout from './layouts/MainLayout';
 import UserProfile from './pages/UserProfile';
 import BusinessProfile from './pages/BusinessProfile';
+
+// Importar las nuevas páginas
+import Settings from './pages/Settings';
+import Inventory from './pages/Inventory';
+import AdminUsers from './pages/AdminUsers';
+import OrdersBoard from './pages/OrdersBoard';
 
 // Componente para rutas protegidas
 const ProtectedRoute = ({ children }) => {
@@ -34,7 +40,7 @@ const PublicRoute = ({ children }) => {
   const { isAuthenticated } = useAuth();
   
   if (isAuthenticated) {
-    return <Navigate to="/" />; // Ahora redirige a la raíz, que será Feed
+    return <Navigate to="/" />; // Redirige al Feed
   }
   
   return children;
@@ -42,8 +48,8 @@ const PublicRoute = ({ children }) => {
 
 // Componente para verificar si el usuario debe ir a Dashboard
 const BusinessRedirect = ({ children }) => {
-  const { user, getUserBusiness } = useAuth();
-  const businessInfo = getUserBusiness();
+  // const { user, getUserBusiness } = useAuth();
+  // const businessInfo = getUserBusiness();
   
   // Si el usuario tiene un negocio asignado y está en la ruta raíz,
   // podríamos decidir dejarlo en Feed o redirigirlo a Dashboard
@@ -93,10 +99,20 @@ function App() {
               />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/feed" element={<Navigate to="/" />} /> {/* Redirige /feed a / */}
-              <Route path="/orders" element={<div>Pedidos</div>} />
-              <Route path="/inventory" element={<div>Inventario</div>} />
-              <Route path="/users" element={<div>Usuarios</div>} />
-              <Route path="/settings" element={<div>Configuración</div>} />
+              
+              {/* Nueva ruta del tablero de pedidos */}
+              <Route path="/orders" element={<OrdersBoard />} />
+              
+              {/* Nueva ruta de inventario */}
+              <Route path="/inventory" element={<Inventory />} />
+              
+              {/* Nueva ruta de administración de usuarios */}
+              <Route path="/users" element={<AdminUsers />} />
+              
+              {/* Nueva ruta de configuración */}
+              <Route path="/settings" element={<Settings />} />
+              
+              {/* Rutas de perfil */}
               <Route path="/profile" element={<UserProfile />} />
               <Route path="/business/profile" element={<BusinessProfile />} />
             </Route>
