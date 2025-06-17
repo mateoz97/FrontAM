@@ -1,4 +1,4 @@
-// src/layouts/MainLayout.jsx
+// src/layouts/MainLayout.jsx - Versión actualizada
 import React, { useState } from 'react';
 import {
   Box,
@@ -68,7 +68,7 @@ function MainLayout() {
   const theme = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout, getUserBusiness, getUserRole } = useAuth();
+  const { user, logout, getUserBusiness, getUserRole, hasPermission } = useAuth();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [open, setOpen] = useState(false);
 
@@ -84,7 +84,8 @@ function MainLayout() {
         icon: <FeedIcon />, 
         path: '/',
         description: 'Publicaciones y novedades',
-        alwaysShow: true // Siempre se muestra
+        alwaysShow: true, // Siempre se muestra
+        permission: null
       }
     ];
     
@@ -95,38 +96,46 @@ function MainLayout() {
           text: 'Dashboard', 
           icon: <DashboardIcon />, 
           path: '/dashboard',
-          description: 'Panel principal'
+          description: 'Panel principal',
+          permission: 'can_view_dashboard'
         },
         { 
           text: 'Pedidos', 
           icon: <ReceiptIcon />, 
           path: '/orders',
-          description: 'Gestión de pedidos'
+          description: 'Tablero de pedidos en tiempo real',
+          permission: 'can_view_orders'
         },
         { 
           text: 'Inventario', 
           icon: <InventoryIcon />, 
           path: '/inventory',
-          description: 'Gestión de productos'
+          description: 'Gestión de productos',
+          permission: 'can_view_inventory'
         }
       );
     }
     
-    // Estos ítems siempre se muestran
-    items.push(
-      { 
+    // Administración de usuarios - solo para usuarios con permisos
+    if (businessInfo && (hasPermission('can_manage_users') || businessInfo.is_owner)) {
+      items.push({
         text: 'Usuarios', 
         icon: <PeopleIcon />, 
         path: '/users',
-        description: 'Gestión de usuarios'
-      },
-      { 
-        text: 'Configuración', 
-        icon: <SettingsIcon />, 
-        path: '/settings',
-        description: 'Ajustes del sistema'
-      }
-    );
+        description: 'Gestión de usuarios',
+        permission: 'can_manage_users'
+      });
+    }
+    
+    // Configuración - siempre disponible
+    items.push({
+      text: 'Configuración', 
+      icon: <SettingsIcon />, 
+      path: '/settings',
+      description: 'Ajustes del sistema',
+      alwaysShow: true,
+      permission: null
+    });
     
     return items;
   };
@@ -165,6 +174,37 @@ function MainLayout() {
     if (isMobile) {
       handleDrawerClose();
     }
+  };
+
+  // Función para verificar si un item debe mostrarse
+  const shouldShowItem = (item) => {
+    // Si tiene alwaysShow, siempre mostrar
+    if (item.alwaysShow) return true;
+    
+    // Si no tiene permiso requerido, mostrar
+    if (!item.permission) return true;
+    
+    // Si tiene permiso requerido, verificar si el usuario lo tiene
+    return hasPermission(item.permission) || businessInfo?.is_owner;
+  };
+
+  // Función para obtener el badge de notificación (ejemplo para usuarios pendientes)
+  const getNotificationBadge = (itemPath) => {
+    if (itemPath === '/users' && hasPermission('can_manage_users')) {
+      // Aquí podrías obtener el número real de solicitudes pendientes
+      const pendingRequests = 2; // Mock data
+      if (pendingRequests > 0) {
+        return (
+          <Chip 
+            label={pendingRequests} 
+            size="small" 
+            color="error" 
+            sx={{ ml: 1, minWidth: 20, height: 20 }}
+          />
+        );
+      }
+    }
+    return null;
   };
 
   const drawer = (
@@ -226,7 +266,7 @@ function MainLayout() {
       
       <Divider />
       <List>
-        {menuItems.map((item, index) => (
+        {menuItems.filter(shouldShowItem).map((item, index) => (
           <Collapse
             key={item.text}
             in={open}
@@ -265,19 +305,22 @@ function MainLayout() {
                 >
                   {item.icon}
                 </ListItemIcon>
-                <Box>
-                  <ListItemText 
-                    primary={item.text} 
-                    primaryTypographyProps={{
-                      fontSize: '0.95rem',
-                      fontWeight: location.pathname === item.path ? 'bold' : 'medium',
-                    }}
-                  />
-                  {item.description && (
-                    <Typography variant="caption" color="text.secondary">
-                      {item.description}
-                    </Typography>
-                  )}
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                  <Box>
+                    <ListItemText 
+                      primary={item.text} 
+                      primaryTypographyProps={{
+                        fontSize: '0.95rem',
+                        fontWeight: location.pathname === item.path ? 'bold' : 'medium',
+                      }}
+                    />
+                    {item.description && (
+                      <Typography variant="caption" color="text.secondary">
+                        {item.description}
+                      </Typography>
+                    )}
+                  </Box>
+                  {getNotificationBadge(item.path)}
                 </Box>
               </ListItemButton>
             </ListItem>
@@ -315,7 +358,7 @@ function MainLayout() {
 
   return (
     <Box sx={{ display: 'flex' }}>
-      {/* Usar el nuevo TopHeader con los props necesarios */}
+      {/* Usar el TopHeader con los props necesarios */}
       <TopHeader 
         onDrawerToggle={handleDrawerToggle} 
         open={open} 

@@ -148,7 +148,7 @@ const CreatePost = ({ onOpenModal, user }) => {
             gap: 1
           }}
         >
-          {quickActions.map((action, index) => (
+          {quickActions.map((action) => (
             <Button
               key={action.label}
               onClick={onOpenModal}

@@ -50,7 +50,12 @@ const CreatePostModal = ({ open, onClose, onPostCreated, activeBusinessId }) => 
       }
 
       const newPost = await postService.createPost(postData);
-      onPostCreated(newPost);
+
+      onPostCreated({
+        content: content.trim(),
+        image: selectedFile,
+        createdPost: newPost
+      });
       
       // Limpiar formulario
       setContent('');
