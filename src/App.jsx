@@ -20,6 +20,10 @@ import Inventory from './pages/Inventory';
 import AdminUsers from './pages/AdminUsers';
 import OrdersBoard from './pages/OrdersBoard';
 
+// Debug component
+import LoginDebug from './components/debug/LoginDebug';
+import BusinessSetup from './components/auth/BusinessSetup';
+
 // Componente para rutas protegidas
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
@@ -48,12 +52,34 @@ const PublicRoute = ({ children }) => {
 
 // Componente para verificar si el usuario debe ir a Dashboard
 const BusinessRedirect = ({ children }) => {
-  // const { user, getUserBusiness } = useAuth();
-  // const businessInfo = getUserBusiness();
+  const { user, getUserBusiness, getUserRole, activeBusinessId, switchBusiness } = useAuth();
+  const businessInfo = getUserBusiness();
+  const roleInfo = getUserRole();
   
-  // Si el usuario tiene un negocio asignado y está en la ruta raíz,
-  // podríamos decidir dejarlo en Feed o redirigirlo a Dashboard
-  // Por ahora, lo dejamos en Feed independientemente de si tiene negocio o no
+  // Si el usuario es owner y no tiene negocio activo, intentar activar su negocio
+  React.useEffect(() => {
+    const setupBusinessForOwner = async () => {
+      // Si el usuario es owner pero no tiene businessInfo activo
+      if ((roleInfo?.name?.toLowerCase() === 'owner' || user?.role_info?.name?.toLowerCase() === 'owner') && 
+          !businessInfo && !activeBusinessId) {
+        
+        console.log('Usuario es owner sin negocio activo, intentando configurar...');
+        
+        // Verificar si hay información de negocio en los datos del usuario
+        if (user?.business_info?.id) {
+          console.log('Encontrado business_info en usuario:', user.business_info);
+          try {
+            await switchBusiness(user.business_info.id);
+            console.log('Negocio activado exitosamente');
+          } catch (error) {
+            console.error('Error activando negocio:', error);
+          }
+        }
+      }
+    };
+
+    setupBusinessForOwner();
+  }, [user, roleInfo, businessInfo, activeBusinessId, switchBusiness]);
   
   return children;
 };
@@ -81,6 +107,10 @@ function App() {
                 </PublicRoute>
               } 
             />
+            <Route 
+              path="/debug" 
+              element={<LoginDebug />} 
+            />
             <Route
               element={
                 <ProtectedRoute>
@@ -92,9 +122,11 @@ function App() {
               <Route 
                 path="/" 
                 element={
-                  <BusinessRedirect>
-                    <Feed />
-                  </BusinessRedirect>
+                  <BusinessSetup>
+                    <BusinessRedirect>
+                      <Feed />
+                    </BusinessRedirect>
+                  </BusinessSetup>
                 } 
               />
               <Route path="/dashboard" element={<Dashboard />} />

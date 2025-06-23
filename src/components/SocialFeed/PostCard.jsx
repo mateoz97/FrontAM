@@ -1,4 +1,5 @@
-// src/components/SocialFeed/PostCard.jsx
+// src/components/SocialFeed/PostCard.jsx - Sistema de comentarios corregido
+
 import React, { useState } from 'react';
 import {
   Card, CardHeader, CardContent, CardMedia, CardActions,
@@ -10,18 +11,12 @@ import {
   Comment, Share, Send, Business, Badge
 } from '@mui/icons-material';
 
-/**
- * Componente que muestra una publicación en el feed
- * @param {Object} props 
- * @param {Object} props.post - Datos de la publicación
- * @param {Function} props.onLike - Función para dar like
- * @param {Function} props.onComment - Función para comentar
- * @param {Function} props.onShare - Función para compartir
- * @param {boolean} props.loading - Indica si está cargando
- */
 const PostCard = ({ post, onLike, onComment, onShare, loading = false }) => {
   const [showComments, setShowComments] = useState(false);
   const [commentText, setCommentText] = useState('');
+  const [localComments, setLocalComments] = useState(post.comments_list || []);
+  const [localCommentsCount, setLocalCommentsCount] = useState(post.comments || 0);
+  const [submittingComment, setSubmittingComment] = useState(false);
 
   // Formatear fecha relativa
   const formatDate = (dateString) => {
@@ -44,10 +39,61 @@ const PostCard = ({ post, onLike, onComment, onShare, loading = false }) => {
     }
   };
 
-  const handleCommentSubmit = () => {
-    if (!commentText.trim()) return;
-    onComment(commentText);
-    setCommentText('');
+  // ✅ CORRECCIÓN: Manejar comentarios localmente
+  const handleCommentSubmit = async () => {
+    if (!commentText.trim() || submittingComment) return;
+
+    setSubmittingComment(true);
+
+    // Definir el id temporal fuera del try/catch
+    const optimisticCommentId = `temp_${Date.now()}`;
+    
+    try {
+      console.log('💬 Enviando comentario:', commentText);
+      
+      // Crear comentario optimista (mostrar inmediatamente)
+      const optimisticComment = {
+        id: optimisticCommentId, // ID temporal
+        content: commentText,
+        created_at: new Date().toISOString(),
+        author: {
+          name: 'Tú', // Se actualizará con la respuesta del servidor
+          username: 'current_user'
+        }
+      };
+
+      // ✅ Agregar comentario inmediatamente al estado local
+      setLocalComments(prevComments => [optimisticComment, ...prevComments]);
+      setLocalCommentsCount(prevCount => prevCount + 1);
+      setCommentText(''); // Limpiar campo inmediatamente
+
+      // Enviar al servidor
+      const serverComment = await onComment(commentText);
+      
+      console.log('✅ Comentario enviado al servidor:', serverComment);
+      
+      // ✅ Reemplazar comentario optimista con el del servidor
+      if (serverComment && serverComment.id) {
+        setLocalComments(prevComments => 
+          prevComments.map(comment => 
+            comment.id === optimisticCommentId ? serverComment : comment
+          )
+        );
+      }
+
+    } catch (error) {
+      console.error('❌ Error al enviar comentario:', error);
+      
+      // ✅ Revertir cambios optimistas en caso de error
+      setLocalComments(prevComments => 
+        prevComments.filter(comment => comment.id !== optimisticCommentId)
+      );
+      setLocalCommentsCount(prevCount => Math.max(0, prevCount - 1));
+      setCommentText(commentText); // Restaurar texto del comentario
+      
+    } finally {
+      setSubmittingComment(false);
+    }
   };
 
   const handleKeyPress = (e) => {
@@ -149,7 +195,7 @@ const PostCard = ({ post, onLike, onComment, onShare, loading = false }) => {
           onClick={() => setShowComments(!showComments)} 
           sx={{ cursor: 'pointer' }}
         >
-          {post.comments || 0} comentarios
+          {localCommentsCount} comentarios
         </Typography>
       </Box>
       
@@ -199,12 +245,13 @@ const PostCard = ({ post, onLike, onComment, onShare, loading = false }) => {
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}
               onKeyPress={handleKeyPress}
+              disabled={submittingComment}
               InputProps={{
                 endAdornment: (
                   <IconButton 
                     size="small" 
                     color="primary" 
-                    disabled={!commentText.trim()}
+                    disabled={!commentText.trim() || submittingComment}
                     onClick={handleCommentSubmit}
                   >
                     <Send fontSize="small" />
@@ -214,8 +261,9 @@ const PostCard = ({ post, onLike, onComment, onShare, loading = false }) => {
             />
           </Box>
           
-          {post.comments_list && post.comments_list.length > 0 ? (
-            post.comments_list.map((comment, index) => (
+          {/* ✅ CORRECCIÓN: Usar comentarios locales */}
+          {localComments && localComments.length > 0 ? (
+            localComments.map((comment, index) => (
               <Box key={comment.id || index} sx={{ mb: 1.5, display: 'flex', gap: 1 }}>
                 <Avatar sx={{ width: 32, height: 32 }}>
                   {comment.author?.name?.[0] || 'U'}

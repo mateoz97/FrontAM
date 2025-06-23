@@ -116,6 +116,33 @@ function MainLayout() {
       );
     }
     
+    // Si no hay businessInfo pero el usuario es owner, también mostrar las opciones
+    else if (roleInfo?.name?.toLowerCase() === 'owner' || user?.role_info?.name?.toLowerCase() === 'owner') {
+      items.push(
+        { 
+          text: 'Dashboard', 
+          icon: <DashboardIcon />, 
+          path: '/dashboard',
+          description: 'Panel principal',
+          permission: null // Sin permiso para owners
+        },
+        { 
+          text: 'Pedidos', 
+          icon: <ReceiptIcon />, 
+          path: '/orders',
+          description: 'Tablero de pedidos en tiempo real',
+          permission: null
+        },
+        { 
+          text: 'Inventario', 
+          icon: <InventoryIcon />, 
+          path: '/inventory',
+          description: 'Gestión de productos',
+          permission: null
+        }
+      );
+    }
+    
     // Administración de usuarios - solo para usuarios con permisos
     if (businessInfo && (hasPermission('can_manage_users') || businessInfo.is_owner)) {
       items.push({
@@ -184,8 +211,14 @@ function MainLayout() {
     // Si no tiene permiso requerido, mostrar
     if (!item.permission) return true;
     
+    // Si el usuario es owner del negocio, mostrar todo
+    if (businessInfo?.is_owner) return true;
+    
+    // Si el usuario tiene el rol de owner, mostrar todo
+    if (roleInfo?.name?.toLowerCase() === 'owner') return true;
+    
     // Si tiene permiso requerido, verificar si el usuario lo tiene
-    return hasPermission(item.permission) || businessInfo?.is_owner;
+    return hasPermission(item.permission);
   };
 
   // Función para obtener el badge de notificación (ejemplo para usuarios pendientes)

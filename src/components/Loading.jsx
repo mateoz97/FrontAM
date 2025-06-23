@@ -1,23 +1,26 @@
 import React from 'react';
-import { Box, CircularProgress, Typography } from '@mui/material';
+import EnhancedLoading from './common/EnhancedLoading';
 
-const Loading = ({ message = 'Cargando...' }) => {
+/**
+ * Componente de carga simplificado que usa EnhancedLoading
+ * Mantiene compatibilidad con el código existente
+ */
+const Loading = ({ 
+  message = 'Cargando...', 
+  fullHeight = true,
+  variant = 'circular',
+  size = 'medium',
+  ...props 
+}) => {
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        gap: 2
-      }}
-    >
-      <CircularProgress size={48} />
-      <Typography variant="h6" color="textSecondary">
-        {message}
-      </Typography>
-    </Box>
+    <EnhancedLoading
+      message={message}
+      fullHeight={fullHeight}
+      variant={variant}
+      size={size}
+      description="Por favor espera un momento"
+      {...props}
+    />
   );
 };
 

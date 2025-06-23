@@ -126,6 +126,7 @@ const CreatePostModal = ({ open, onClose, onPostCreated, activeBusinessId }) => 
       fullWidth
       PaperProps={{
         sx: {
+        // Pasar el post ya creado del servidor
           borderRadius: 3,
           minHeight: '400px',
           maxHeight: '80vh',

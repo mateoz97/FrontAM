@@ -3,16 +3,26 @@ import api from './api';
 
 const authService = {
   async login(credentials) {
+    console.log('Auth service login called with:', credentials);
+    
     // Actualizar el login para usar el formato correcto
-    const response = await api.post('/accounts/login/', {
-      identifier: credentials.username,
+    const loginData = {
+      identifier: credentials.username || credentials.identifier,
       password: credentials.password
-    });
+    };
+    
+    console.log('Sending login data to API:', loginData);
+    
+    const response = await api.post('/accounts/login/', loginData);
+    
+    console.log('Login API response:', response.data);
     
     if (response.data.access) {
       localStorage.setItem('token', response.data.access);
       localStorage.setItem('refreshToken', response.data.refresh);
       localStorage.setItem('user', JSON.stringify(response.data.user));
+      
+      console.log('Stored user data:', response.data.user);
       
       // Configurar el token en los headers de axios
       api.defaults.headers.common['Authorization'] = `Bearer ${response.data.access}`;

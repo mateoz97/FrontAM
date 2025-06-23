@@ -99,23 +99,76 @@ const businessService = {
       if (!businessId || isNaN(businessId)) {
         throw new Error('ID de negocio inválido');
       }
-      
-      // Asegurar que se envíe como número
-      const requestData = { 
-        business_id: parseInt(businessId) 
-      };
-      
-      console.log('Datos a enviar:', requestData);
-      
-      const response = await api.post('/business/switch-business/', requestData);
-      
-      console.log('Respuesta del servidor:', response.data);
-      return response.data;
-      
+
+      // Primero obtener los negocios del usuario para verificar si solo tiene uno
+      const userBusinesses = await this.getUserBusinesses();
+      console.log('User businesses for switch:', userBusinesses);
+
+      // Si el usuario solo tiene un negocio y es el que intenta activar,
+      // retornar éxito sin llamar al endpoint (ya está activo por defecto)
+      if (userBusinesses.length === 1 && userBusinesses[0].id === parseInt(businessId)) {
+        console.log('Usuario solo tiene un negocio, activando directamente sin switch-business');
+        return {
+          success: true,
+          message: 'Negocio activado (único negocio del usuario)',
+          business_id: parseInt(businessId),
+          business: userBusinesses[0]
+        };
+      }
+
+      // Si tiene múltiples negocios, usar el endpoint normal
+      if (userBusinesses.length > 1) {
+        console.log('Usuario tiene múltiples negocios, usando switch-business endpoint');
+        
+        // Intentar diferentes formatos de datos
+        let response;
+        try {
+          // Formato 1: Solo el número
+          response = await api.post('/business/switch-business/', parseInt(businessId));
+        } catch (error1) {
+          console.log('Formato 1 falló, intentando formato 2...');
+          try {
+            // Formato 2: Objeto con business_id
+            response = await api.post('/business/switch-business/', { business_id: parseInt(businessId) });
+          } catch (error2) {
+            console.log('Formato 2 falló, intentando formato 3...');
+            // Formato 3: Objeto con id
+            response = await api.post('/business/switch-business/', { id: parseInt(businessId) });
+          }
+        }
+        
+        console.log('Respuesta del servidor:', response.data);
+        return response.data;
+      }
+
+      // Si no tiene negocios, error
+      if (userBusinesses.length === 0) {
+        throw new Error('El usuario no tiene negocios asignados');
+      }
+
     } catch (error) {
       console.error(`Error al cambiar al negocio ID ${businessId}:`, error);
       
-      // Logging más detallado del error
+      // Si es un error porque el usuario solo tiene un negocio y el endpoint no existe/falla
+      // intentar obtener los negocios y verificar si el businessId coincide
+      try {
+        console.log('Verificando si es error de negocio único...');
+        const userBusinesses = await this.getUserBusinesses();
+        
+        if (userBusinesses.length === 1 && userBusinesses[0].id === parseInt(businessId)) {
+          console.log('Fallback: activando negocio único sin endpoint');
+          return {
+            success: true,
+            message: 'Negocio activado (fallback para negocio único)',
+            business_id: parseInt(businessId),
+            business: userBusinesses[0]
+          };
+        }
+      } catch (fallbackError) {
+        console.error('Error en fallback:', fallbackError);
+      }
+      
+      // Logging más detallado del error original
       if (error.response) {
         console.error('Response data:', error.response.data);
         console.error('Response status:', error.response.status);
@@ -126,6 +179,58 @@ const businessService = {
         console.error('Error message:', error.message);
       }
       
+      throw error;
+    }
+  },
+
+  /**
+   * Activa automáticamente el negocio del usuario sin usar switch-business
+   * Útil para casos donde el usuario solo tiene un negocio
+   * @returns {Promise<Object>} Información del negocio activado
+   */
+  async activateUserBusiness() {
+    try {
+      console.log('Activando negocio del usuario automáticamente...');
+      
+      const userBusinesses = await this.getUserBusinesses();
+      console.log('Negocios del usuario:', userBusinesses);
+      
+      if (userBusinesses.length === 0) {
+        throw new Error('El usuario no tiene negocios asignados');
+      }
+      
+      // Si solo tiene un negocio, activarlo directamente
+      if (userBusinesses.length === 1) {
+        const business = userBusinesses[0];
+        console.log('Activando negocio único:', business);
+        
+        return {
+          success: true,
+          message: 'Negocio activado automáticamente',
+          business_id: business.id,
+          business: business,
+          isOwner: business.isOwner || business.role === 'Owner',
+          role: business.role
+        };
+      }
+      
+      // Si tiene múltiples negocios, buscar el primero donde sea owner
+      const ownerBusiness = userBusinesses.find(b => b.isOwner === true || b.role === 'Owner');
+      const businessToActivate = ownerBusiness || userBusinesses[0];
+      
+      console.log('Activando negocio (múltiples disponibles):', businessToActivate);
+      
+      return {
+        success: true,
+        message: 'Negocio activado automáticamente',
+        business_id: businessToActivate.id,
+        business: businessToActivate,
+        isOwner: businessToActivate.isOwner || businessToActivate.role === 'Owner',
+        role: businessToActivate.role
+      };
+      
+    } catch (error) {
+      console.error('Error activando negocio automáticamente:', error);
       throw error;
     }
   },

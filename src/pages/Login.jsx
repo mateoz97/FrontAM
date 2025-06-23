@@ -54,13 +54,18 @@ const Login = () => {
 
     try {
       // CAMBIO 2: Ahora pasamos el identifier que puede ser username o email
-      await login({
+      const result = await login({
         username: formData.identifier,
         password: formData.password
       });
-      navigate('/feed');
+      
+      if (result.success) {
+        navigate('/');
+      } else {
+        setError(result.error || 'Error al iniciar sesión');
+      }
     } catch (err) {
-      setError(err.response?.data?.detail || 'Error al iniciar sesión');
+      setError(err.response?.data?.detail || err.message || 'Error al iniciar sesión');
     } finally {
       setLoading(false);
     }
