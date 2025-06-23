@@ -8,7 +8,7 @@ import {
   Select, FormControl, InputLabel, Tooltip, Badge, Stack,
   TablePagination, InputAdornment, Tabs, Tab, useTheme, alpha,
   List, ListItem, ListItemText, ListItemAvatar, ListItemSecondaryAction,
-  Switch, FormControlLabel, Divider
+  Switch, FormControlLabel, Divider, CircularProgress
 } from '@mui/material';
 import {
   Add, Edit, Delete, Search, FilterList, People, PersonAdd,
@@ -18,114 +18,8 @@ import {
   History, Schedule, Verified, Star, ManageAccounts
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
-
-// Datos mock para desarrollo
-const mockUsers = [
-  {
-    id: 1,
-    username: 'admin_user',
-    firstName: 'Juan',
-    lastName: 'Pérez',
-    email: 'juan.perez@restaurant.com',
-    phone: '+1234567890',
-    role: 'Admin',
-    status: 'active',
-    isOwner: true,
-    lastLogin: '2024-01-15 14:30',
-    joinDate: '2024-01-01',
-    avatar: null,
-    permissions: ['all']
-  },
-  {
-    id: 2,
-    username: 'manager_maria',
-    firstName: 'María',
-    lastName: 'González',
-    email: 'maria.gonzalez@restaurant.com',
-    phone: '+1234567891',
-    role: 'Gerente',
-    status: 'active',
-    isOwner: false,
-    lastLogin: '2024-01-15 12:15',
-    joinDate: '2024-01-02',
-    avatar: null,
-    permissions: ['manage_inventory', 'view_reports']
-  },
-  {
-    id: 3,
-    username: 'waiter_carlos',
-    firstName: 'Carlos',
-    lastName: 'Rodríguez',
-    email: 'carlos.rodriguez@restaurant.com',
-    phone: '+1234567892',
-    role: 'Mesero',
-    status: 'active',
-    isOwner: false,
-    lastLogin: '2024-01-15 10:45',
-    joinDate: '2024-01-05',
-    avatar: null,
-    permissions: ['create_orders', 'view_inventory']
-  },
-  {
-    id: 4,
-    username: 'chef_ana',
-    firstName: 'Ana',
-    lastName: 'Martínez',
-    email: 'ana.martinez@restaurant.com',
-    phone: '+1234567893',
-    role: 'Cocinero',
-    status: 'inactive',
-    isOwner: false,
-    lastLogin: '2024-01-10 09:30',
-    joinDate: '2024-01-03',
-    avatar: null,
-    permissions: ['view_orders', 'update_orders']
-  },
-  {
-    id: 5,
-    username: 'viewer_luis',
-    firstName: 'Luis',
-    lastName: 'Torres',
-    email: 'luis.torres@restaurant.com',
-    phone: '+1234567894',
-    role: 'Viewer',
-    status: 'pending',
-    isOwner: false,
-    lastLogin: null,
-    joinDate: '2024-01-14',
-    avatar: null,
-    permissions: ['view_dashboard']
-  }
-];
-
-const mockJoinRequests = [
-  {
-    id: 1,
-    user: {
-      firstName: 'Pedro',
-      lastName: 'Sánchez',
-      email: 'pedro.sanchez@email.com',
-      username: 'pedro_sanchez'
-    },
-    message: 'Me gustaría unirme al equipo como mesero. Tengo 3 años de experiencia.',
-    requestDate: '2024-01-14',
-    status: 'pending'
-  },
-  {
-    id: 2,
-    user: {
-      firstName: 'Laura',
-      lastName: 'Díaz',
-      email: 'laura.diaz@email.com',
-      username: 'laura_diaz'
-    },
-    message: 'Soy chef con experiencia en cocina italiana.',
-    requestDate: '2024-01-13',
-    status: 'pending'
-  }
-];
-
-const mockRoles = ['Admin', 'Gerente', 'Mesero', 'Cocinero', 'Viewer'];
+import businessService from '../services/business.service';
+import rolesService from '../services/roles.service';
 
 function TabPanel({ children, value, index, ...other }) {
   return (
@@ -147,10 +41,13 @@ const AdminUsers = () => {
   const businessInfo = getUserBusiness();
 
   // Estados principales
-  const [users, _setUsers] = useState(mockUsers);
-  const [filteredUsers, setFilteredUsers] = useState(mockUsers);
-  const [joinRequests] = useState(mockJoinRequests);
+  const [users, setUsers] = useState([]);
+  const [filteredUsers, setFilteredUsers] = useState([]);
+  const [joinRequests, setJoinRequests] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [tabValue, setTabValue] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   
   // Estados para filtros y búsqueda
   const [searchTerm, setSearchTerm] = useState('');
@@ -170,7 +67,7 @@ const AdminUsers = () => {
   // Estados para formularios
   const [inviteForm, setInviteForm] = useState({
     email: '',
-    role: 'Viewer',
+    role_id: '',
     message: ''
   });
   
@@ -179,12 +76,56 @@ const AdminUsers = () => {
     lastName: '',
     email: '',
     phone: '',
-    role: 'Viewer',
+    role_id: '',
     status: 'active'
   });
   
   // Estados para mensajes
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
+
+  // Cargar datos iniciales
+  useEffect(() => {
+    const loadUsersData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Cargar usuarios, solicitudes y roles del negocio en paralelo
+        const [businessUsers, requests, businessRoles] = await Promise.all([
+          businessService.getBusinessUsers(),
+          businessService.getJoinRequests(),
+          rolesService.getRoles()
+        ]);
+        
+        // Procesar usuarios para formatearlos correctamente
+        const processedUsers = businessUsers.map(user => ({
+          ...user,
+          firstName: user.first_name || user.firstName || '',
+          lastName: user.last_name || user.lastName || '',
+          isOwner: user.is_owner || user.isOwner || false,
+          lastLogin: user.last_login || user.lastLogin,
+          joinDate: user.date_joined || user.joinDate,
+          role: user.role?.name || user.role_name || 'Sin rol',
+          roleId: user.role?.id || user.role_id,
+          status: user.is_active ? 'active' : 'inactive'
+        }));
+        
+        setUsers(processedUsers);
+        setJoinRequests(requests || []);
+        setRoles(businessRoles || []);
+        
+      } catch (error) {
+        console.error('Error loading users data:', error);
+        setError('Error al cargar los datos de usuarios');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (businessInfo) {
+      loadUsersData();
+    }
+  }, [businessInfo]);
 
   // Filtrar usuarios
   useEffect(() => {
@@ -202,7 +143,7 @@ const AdminUsers = () => {
 
     // Filtro por rol
     if (roleFilter !== 'all') {
-      filtered = filtered.filter(user => user.role === roleFilter);
+      filtered = filtered.filter(user => user.roleId === roleFilter);
     }
 
     // Filtro por estado
@@ -229,15 +170,21 @@ const AdminUsers = () => {
   const getRoleIcon = (role, isOwner) => {
     if (isOwner) return <Star color="warning" />;
     
-    const roleIcons = {
-      'Admin': <SupervisorAccount color="error" />,
-      'Gerente': <ManageAccounts color="primary" />,
-      'Mesero': <People color="info" />,
-      'Cocinero': <BadgeIcon color="secondary" />,
-      'Viewer': <Visibility color="action" />
-    };
+    const roleName = role?.toLowerCase() || '';
     
-    return roleIcons[role] || <BadgeIcon color="action" />;
+    if (roleName.includes('admin') || roleName.includes('propietario')) {
+      return <SupervisorAccount color="error" />;
+    } else if (roleName.includes('gerente') || roleName.includes('manager')) {
+      return <ManageAccounts color="primary" />;
+    } else if (roleName.includes('mesero') || roleName.includes('waiter')) {
+      return <People color="info" />;
+    } else if (roleName.includes('cocinero') || roleName.includes('chef')) {
+      return <BadgeIcon color="secondary" />;
+    } else if (roleName.includes('viewer') || roleName.includes('observador')) {
+      return <Visibility color="action" />;
+    }
+    
+    return <BadgeIcon color="action" />;
   };
 
   const getInitials = (firstName, lastName) => {
@@ -258,7 +205,7 @@ const AdminUsers = () => {
   const handleInviteUser = () => {
     setInviteForm({
       email: '',
-      role: 'Viewer',
+      role_id: roles.length > 0 ? roles[0].id : '',
       message: ''
     });
     setInviteModal(true);
@@ -271,7 +218,7 @@ const AdminUsers = () => {
       lastName: user.lastName,
       email: user.email,
       phone: user.phone,
-      role: user.role,
+      role_id: user.roleId,
       status: user.status
     });
     setEditUserModal(true);
@@ -282,49 +229,173 @@ const AdminUsers = () => {
     setRoleModal(true);
   };
 
-  const handleSendInvite = () => {
-    // Aquí conectaremos con el backend
-    console.log('Enviando invitación:', inviteForm);
-    setSnackbar({ open: true, message: 'Invitación enviada exitosamente', severity: 'success' });
-    setInviteModal(false);
+  const handleSendInvite = async () => {
+    try {
+      console.log('Enviando invitación:', inviteForm);
+      await businessService.inviteUser({
+        email: inviteForm.email,
+        role_id: inviteForm.role_id,
+        message: inviteForm.message
+      });
+      
+      setSnackbar({ open: true, message: 'Invitación enviada exitosamente', severity: 'success' });
+      setInviteModal(false);
+      setInviteForm({ email: '', role_id: '', message: '' });
+      
+    } catch (error) {
+      console.error('Error al enviar invitación:', error);
+      setSnackbar({ open: true, message: 'Error al enviar la invitación', severity: 'error' });
+    }
   };
 
-  const handleSaveUser = () => {
-    // Aquí conectaremos con el backend
-    console.log('Guardando usuario:', userForm);
-    setSnackbar({ open: true, message: 'Usuario actualizado exitosamente', severity: 'success' });
-    setEditUserModal(false);
+  const handleSaveUser = async () => {
+    try {
+      console.log('Actualizando usuario:', selectedUser.id, userForm);
+      const updatedUser = await businessService.updateBusinessUser(selectedUser.id, {
+        first_name: userForm.firstName,
+        last_name: userForm.lastName,
+        email: userForm.email,
+        phone: userForm.phone,
+        is_active: userForm.status === 'active'
+      });
+      
+      // Actualizar la lista local
+      setUsers(prev => prev.map(u => 
+        u.id === selectedUser.id 
+          ? { ...u, ...updatedUser, 
+              firstName: updatedUser.first_name, 
+              lastName: updatedUser.last_name,
+              status: updatedUser.is_active ? 'active' : 'inactive'
+            }
+          : u
+      ));
+      
+      setSnackbar({ open: true, message: 'Usuario actualizado exitosamente', severity: 'success' });
+      setEditUserModal(false);
+      
+    } catch (error) {
+      console.error('Error al actualizar usuario:', error);
+      setSnackbar({ open: true, message: 'Error al actualizar el usuario', severity: 'error' });
+    }
   };
 
-  const handleUpdateRole = (newRole) => {
-    // Aquí conectaremos con el backend
-    console.log('Actualizando rol:', selectedUser, newRole);
-    setSnackbar({ open: true, message: 'Rol actualizado exitosamente', severity: 'success' });
-    setRoleModal(false);
+  const handleUpdateRole = async (newRoleId) => {
+    try {
+      console.log('Actualizando rol:', selectedUser.id, newRoleId);
+      await rolesService.assignRole({
+        user_id: selectedUser.id,
+        role_id: newRoleId
+      });
+      
+      // Actualizar la lista local
+      const newRole = roles.find(r => r.id === newRoleId);
+      setUsers(prev => prev.map(u => 
+        u.id === selectedUser.id 
+          ? { ...u, role: newRole?.name || 'Sin rol', roleId: newRoleId }
+          : u
+      ));
+      
+      setSnackbar({ open: true, message: 'Rol actualizado exitosamente', severity: 'success' });
+      setRoleModal(false);
+      
+    } catch (error) {
+      console.error('Error al actualizar rol:', error);
+      setSnackbar({ open: true, message: 'Error al actualizar el rol', severity: 'error' });
+    }
   };
 
-  const handleApproveRequest = (requestId) => {
-    // Aquí conectaremos con el backend
-    console.log('Aprobando solicitud:', requestId);
-    setSnackbar({ open: true, message: 'Solicitud aprobada', severity: 'success' });
+  const handleApproveRequest = async (requestId) => {
+    try {
+      console.log('Aprobando solicitud:', requestId);
+      await businessService.approveJoinRequest(requestId);
+      
+      // Remover la solicitud de la lista
+      setJoinRequests(prev => prev.filter(req => req.id !== requestId));
+      
+      // Recargar usuarios para incluir el nuevo miembro
+      const businessUsers = await businessService.getBusinessUsers();
+      const processedUsers = businessUsers.map(user => ({
+        ...user,
+        firstName: user.first_name || user.firstName || '',
+        lastName: user.last_name || user.lastName || '',
+        isOwner: user.is_owner || user.isOwner || false,
+        lastLogin: user.last_login || user.lastLogin,
+        joinDate: user.date_joined || user.joinDate,
+        role: user.role?.name || user.role_name || 'Sin rol',
+        roleId: user.role?.id || user.role_id,
+        status: user.is_active ? 'active' : 'inactive'
+      }));
+      setUsers(processedUsers);
+      
+      setSnackbar({ open: true, message: 'Solicitud aprobada exitosamente', severity: 'success' });
+      
+    } catch (error) {
+      console.error('Error al aprobar solicitud:', error);
+      setSnackbar({ open: true, message: 'Error al aprobar la solicitud', severity: 'error' });
+    }
   };
 
-  const handleRejectRequest = (requestId) => {
-    // Aquí conectaremos con el backend
-    console.log('Rechazando solicitud:', requestId);
-    setSnackbar({ open: true, message: 'Solicitud rechazada', severity: 'info' });
+  const handleRejectRequest = async (requestId) => {
+    try {
+      console.log('Rechazando solicitud:', requestId);
+      await businessService.rejectJoinRequest(requestId);
+      
+      // Remover la solicitud de la lista
+      setJoinRequests(prev => prev.filter(req => req.id !== requestId));
+      
+      setSnackbar({ open: true, message: 'Solicitud rechazada', severity: 'info' });
+      
+    } catch (error) {
+      console.error('Error al rechazar solicitud:', error);
+      setSnackbar({ open: true, message: 'Error al procesar la solicitud', severity: 'error' });
+    }
   };
 
-  const handleToggleUserStatus = (userId) => {
-    // Aquí conectaremos con el backend
-    console.log('Cambiando estado del usuario:', userId);
-    setSnackbar({ open: true, message: 'Estado del usuario actualizado', severity: 'info' });
+  const handleToggleUserStatus = async (userId) => {
+    try {
+      const user = users.find(u => u.id === userId);
+      const newStatus = user.status === 'active' ? false : true;
+      
+      console.log('Cambiando estado del usuario:', userId, newStatus);
+      await businessService.updateBusinessUser(userId, {
+        is_active: newStatus
+      });
+      
+      // Actualizar la lista local
+      setUsers(prev => prev.map(u => 
+        u.id === userId 
+          ? { ...u, status: newStatus ? 'active' : 'inactive' }
+          : u
+      ));
+      
+      setSnackbar({ 
+        open: true, 
+        message: `Usuario ${newStatus ? 'activado' : 'desactivado'} exitosamente`, 
+        severity: 'info' 
+      });
+      
+    } catch (error) {
+      console.error('Error al cambiar estado del usuario:', error);
+      setSnackbar({ open: true, message: 'Error al cambiar el estado del usuario', severity: 'error' });
+    }
   };
 
-  const handleDeleteUser = (userId) => {
-    // Aquí conectaremos con el backend
-    console.log('Eliminando usuario:', userId);
-    setSnackbar({ open: true, message: 'Usuario eliminado', severity: 'warning' });
+  const handleDeleteUser = async (userId) => {
+    if (window.confirm('¿Estás seguro de que quieres eliminar este usuario del negocio?')) {
+      try {
+        console.log('Eliminando usuario:', userId);
+        await businessService.removeUserFromBusiness(userId);
+        
+        // Remover de la lista local
+        setUsers(prev => prev.filter(u => u.id !== userId));
+        
+        setSnackbar({ open: true, message: 'Usuario eliminado exitosamente', severity: 'warning' });
+        
+      } catch (error) {
+        console.error('Error al eliminar usuario:', error);
+        setSnackbar({ open: true, message: 'Error al eliminar el usuario', severity: 'error' });
+      }
+    }
   };
 
   // Verificar permisos
@@ -485,9 +556,9 @@ const AdminUsers = () => {
                 label="Rol"
               >
                 <MenuItem value="all">Todos</MenuItem>
-                {mockRoles.map((role) => (
-                  <MenuItem key={role} value={role}>
-                    {role}
+                {roles.map((role) => (
+                  <MenuItem key={role.id} value={role.id}>
+                    {role.name}
                   </MenuItem>
                 ))}
               </Select>
@@ -753,25 +824,38 @@ const AdminUsers = () => {
         {/* Tab Panel 2 - Roles */}
         <TabPanel value={tabValue} index={2}>
           <Grid container spacing={3}>
-            {mockRoles.map((role) => {
-              const roleUsers = users.filter(u => u.role === role);
-              const roleColor = {
-                'Admin': 'error',
-                'Gerente': 'primary',
-                'Mesero': 'info',
-                'Cocinero': 'secondary',
-                'Viewer': 'default'
-              }[role] || 'default';
+            {roles.map((role) => {
+              const roleUsers = users.filter(u => u.roleId === role.id);
+              const roleName = role.name?.toLowerCase() || '';
+              
+              // Determinar color basado en el nombre del rol
+              let roleColor = 'default';
+              if (roleName.includes('admin') || roleName.includes('propietario')) {
+                roleColor = 'error';
+              } else if (roleName.includes('gerente') || roleName.includes('manager')) {
+                roleColor = 'primary';
+              } else if (roleName.includes('mesero') || roleName.includes('waiter')) {
+                roleColor = 'info';
+              } else if (roleName.includes('cocinero') || roleName.includes('chef')) {
+                roleColor = 'secondary';
+              }
 
               return (
-                <Grid item xs={12} sm={6} md={4} key={role}>
+                <Grid item xs={12} sm={6} md={4} key={role.id}>
                   <Card>
                     <CardContent>
                       <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                         <Avatar sx={{ bgcolor: `${roleColor}.main`, mr: 2 }}>
-                          {getRoleIcon(role, false)}
+                          {getRoleIcon(role.name, false)}
                         </Avatar>
-                        <Typography variant="h6">{role}</Typography>
+                        <Box>
+                          <Typography variant="h6">{role.name}</Typography>
+                          {role.description && (
+                            <Typography variant="caption" color="textSecondary">
+                              {role.description}
+                            </Typography>
+                          )}
+                        </Box>
                       </Box>
                       <Stack spacing={1}>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -790,6 +874,7 @@ const AdminUsers = () => {
                           <Typography variant="body2">Últimos 7 días:</Typography>
                           <Typography variant="body2" fontWeight={600}>
                             {roleUsers.filter(u => {
+                              if (!u.lastLogin) return false;
                               const lastLogin = new Date(u.lastLogin);
                               const sevenDaysAgo = new Date();
                               sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -804,6 +889,14 @@ const AdminUsers = () => {
                         fullWidth
                         sx={{ mt: 2 }}
                         startIcon={<Settings />}
+                        onClick={() => {
+                          // TODO: Implementar configuración de permisos
+                          setSnackbar({ 
+                            open: true, 
+                            message: 'Configuración de permisos en desarrollo', 
+                            severity: 'info' 
+                          });
+                        }}
                       >
                         Configurar Permisos
                       </Button>
@@ -833,13 +926,13 @@ const AdminUsers = () => {
             <FormControl fullWidth sx={{ mb: 2 }}>
               <InputLabel>Rol</InputLabel>
               <Select
-                value={inviteForm.role}
-                onChange={(e) => setInviteForm({ ...inviteForm, role: e.target.value })}
+                value={inviteForm.role_id}
+                onChange={(e) => setInviteForm({ ...inviteForm, role_id: e.target.value })}
                 label="Rol"
               >
-                {mockRoles.filter(role => role !== 'Admin').map((role) => (
-                  <MenuItem key={role} value={role}>
-                    {role}
+                {roles.filter(role => !role.name?.toLowerCase().includes('admin')).map((role) => (
+                  <MenuItem key={role.id} value={role.id}>
+                    {role.name}
                   </MenuItem>
                 ))}
               </Select>
@@ -942,13 +1035,16 @@ const AdminUsers = () => {
           <FormControl fullWidth>
             <InputLabel>Nuevo Rol</InputLabel>
             <Select
-              defaultValue={selectedUser?.role}
+              defaultValue={selectedUser?.roleId}
               onChange={(e) => handleUpdateRole(e.target.value)}
               label="Nuevo Rol"
             >
-              {mockRoles.filter(role => role !== 'Admin' && role !== selectedUser?.role).map((role) => (
-                <MenuItem key={role} value={role}>
-                  {role}
+              {roles.filter(role => 
+                !role.name?.toLowerCase().includes('admin') && 
+                role.id !== selectedUser?.roleId
+              ).map((role) => (
+                <MenuItem key={role.id} value={role.id}>
+                  {role.name}
                 </MenuItem>
               ))}
             </Select>

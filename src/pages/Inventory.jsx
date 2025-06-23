@@ -6,7 +6,8 @@ import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   IconButton, Chip, Avatar, Fab, Alert, Snackbar, MenuItem,
   Select, FormControl, InputLabel, Tooltip, Badge, Stack,
-  TablePagination, InputAdornment, Tabs, Tab, useTheme, alpha
+  TablePagination, InputAdornment, Tabs, Tab, useTheme, alpha,
+  CircularProgress, CardHeader, CardActions
 } from '@mui/material';
 import {
   Add, Edit, Delete, Search, FilterList, Inventory2,
@@ -16,72 +17,7 @@ import {
   Store, Refresh, Save, Cancel
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
-
-// Datos mock para desarrollo
-const mockProducts = [
-  {
-    id: 1,
-    name: 'Hamburguesa Clásica',
-    category: 'Principales',
-    price: 12.99,
-    stock: 45,
-    minStock: 10,
-    image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=100&h=100&fit=crop',
-    status: 'active',
-    lastUpdate: '2024-01-15',
-    cost: 8.50
-  },
-  {
-    id: 2,
-    name: 'Pizza Margherita',
-    category: 'Principales',
-    price: 15.99,
-    stock: 3,
-    minStock: 5,
-    image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=100&h=100&fit=crop',
-    status: 'low_stock',
-    lastUpdate: '2024-01-14',
-    cost: 10.00
-  },
-  {
-    id: 3,
-    name: 'Ensalada César',
-    category: 'Ensaladas',
-    price: 9.99,
-    stock: 0,
-    minStock: 8,
-    image: 'https://images.unsplash.com/photo-1546793665-c74683f339c1?w=100&h=100&fit=crop',
-    status: 'out_of_stock',
-    lastUpdate: '2024-01-13',
-    cost: 6.00
-  },
-  {
-    id: 4,
-    name: 'Pasta Carbonara',
-    category: 'Principales',
-    price: 13.99,
-    stock: 25,
-    minStock: 10,
-    image: 'https://images.unsplash.com/photo-1621996346565-e3dbc353d2e5?w=100&h=100&fit=crop',
-    status: 'active',
-    lastUpdate: '2024-01-15',
-    cost: 9.00
-  },
-  {
-    id: 5,
-    name: 'Bebida Cola',
-    category: 'Bebidas',
-    price: 2.99,
-    stock: 120,
-    minStock: 50,
-    image: 'https://images.unsplash.com/photo-1581636625402-29b2a704ef13?w=100&h=100&fit=crop',
-    status: 'active',
-    lastUpdate: '2024-01-15',
-    cost: 1.50
-  }
-];
-
-const mockCategories = ['Todas', 'Principales', 'Ensaladas', 'Bebidas', 'Postres', 'Entrantes'];
+import inventoryService from '../services/inventory.service';
 
 function TabPanel({ children, value, index, ...other }) {
   return (
@@ -103,15 +39,20 @@ const Inventory = () => {
   const businessInfo = getUserBusiness();
 
   // Estados principales
-  const [products] = useState(mockProducts);
-  const [filteredProducts, setFilteredProducts] = useState(mockProducts);
-  const [categories] = useState(mockCategories);
-  const [tabValue, setTabValue] = useState(0);
+  const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [stockMovements, setStockMovements] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   
   // Estados para filtros y búsqueda
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('Todas');
+  const [selectedCategory, setSelectedCategory] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [filteredProducts, setFilteredProducts] = useState([]);
+  
+  // Estados para tabs
+  const [tabValue, setTabValue] = useState(0);
   
   // Estados para paginación
   const [page, setPage] = useState(0);
@@ -121,16 +62,22 @@ const Inventory = () => {
   const [addProductModal, setAddProductModal] = useState(false);
   const [editProductModal, setEditProductModal] = useState(false);
   const [stockModal, setStockModal] = useState(false);
+  const [addCategoryModal, setAddCategoryModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   
   // Estados para formularios
   const [productForm, setProductForm] = useState({
     name: '',
-    category: '',
+    category_id: '',
     price: '',
     stock: '',
-    minStock: '',
+    min_stock: '',
     cost: '',
+    description: ''
+  });
+  
+  const [categoryForm, setCategoryForm] = useState({
+    name: '',
     description: ''
   });
   
@@ -143,6 +90,37 @@ const Inventory = () => {
   // Estados para mensajes
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
 
+  // Cargar datos iniciales
+  useEffect(() => {
+    const loadInventoryData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Cargar productos, categorías y movimientos en paralelo
+        const [productsData, categoriesData, movementsData] = await Promise.all([
+          inventoryService.getProducts(),
+          inventoryService.getCategories(),
+          inventoryService.getStockMovements({ limit: 50 })
+        ]);
+        
+        setProducts(productsData);
+        setCategories([{ id: '', name: 'Todas las categorías' }, ...categoriesData]);
+        setStockMovements(movementsData);
+        
+      } catch (error) {
+        console.error('Error loading inventory data:', error);
+        setError('Error al cargar los datos del inventario');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (businessInfo) {
+      loadInventoryData();
+    }
+  }, [businessInfo]);
+
   // Filtrar productos
   useEffect(() => {
     let filtered = products;
@@ -150,118 +128,225 @@ const Inventory = () => {
     // Filtro por búsqueda
     if (searchTerm) {
       filtered = filtered.filter(product =>
-        product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.category.toLowerCase().includes(searchTerm.toLowerCase())
+        product.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.description?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
     // Filtro por categoría
-    if (selectedCategory !== 'Todas') {
-      filtered = filtered.filter(product => product.category === selectedCategory);
+    if (selectedCategory && selectedCategory !== '') {
+      filtered = filtered.filter(product => product.category_id === selectedCategory);
     }
 
-    // Filtro por estado
+    // Filtro por estado de stock
     if (statusFilter !== 'all') {
-      filtered = filtered.filter(product => product.status === statusFilter);
+      switch (statusFilter) {
+        case 'low_stock':
+          filtered = filtered.filter(product => product.stock <= (product.min_stock || 0));
+          break;
+        case 'out_of_stock':
+          filtered = filtered.filter(product => product.stock === 0);
+          break;
+        case 'in_stock':
+          filtered = filtered.filter(product => product.stock > (product.min_stock || 0));
+          break;
+        default:
+          break;
+      }
     }
 
     setFilteredProducts(filtered);
-    setPage(0); // Reset page when filters change
+    setPage(0);
   }, [products, searchTerm, selectedCategory, statusFilter]);
 
   // Funciones de utilidad
   const getStatusChip = (product) => {
     if (product.stock === 0) {
-      return <Chip label="Sin stock" color="error" size="small" />;
+      return <Chip label="Sin stock" color="error" size="small" icon={<Warning />} />;
+    } else if (product.stock <= (product.min_stock || 0)) {
+      return <Chip label="Stock bajo" color="warning" size="small" icon={<TrendingDown />} />;
+    } else {
+      return <Chip label="En stock" color="success" size="small" icon={<CheckCircle />} />;
     }
-    if (product.stock <= product.minStock) {
-      return <Chip label="Stock bajo" color="warning" size="small" />;
-    }
-    return <Chip label="Disponible" color="success" size="small" />;
   };
 
-  const getStockIcon = (product) => {
-    if (product.stock === 0) {
-      return <Warning color="error" />;
-    }
-    if (product.stock <= product.minStock) {
-      return <TrendingDown color="warning" />;
-    }
-    return <CheckCircle color="success" />;
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('es-CO', {
+      style: 'currency',
+      currency: 'COP',
+      minimumFractionDigits: 0
+    }).format(amount || 0);
   };
 
-  // Cálculos para estadísticas
-  const totalProducts = products.length;
-  const lowStockProducts = products.filter(p => p.stock <= p.minStock && p.stock > 0).length;
-  const outOfStockProducts = products.filter(p => p.stock === 0).length;
-  const totalValue = products.reduce((sum, p) => sum + (p.price * p.stock), 0);
-
-  // Manejadores de eventos
-  const handleTabChange = (event, newValue) => {
-    setTabValue(newValue);
+  const getCategoryName = (categoryId) => {
+    const category = categories.find(cat => cat.id === categoryId);
+    return category?.name || 'Sin categoría';
   };
 
-  const handleAddProduct = () => {
+  // Funciones de manejo de formularios
+  const handleProductFormChange = (field, value) => {
+    setProductForm(prev => ({ ...prev, [field]: value }));
+  };
+
+  const resetProductForm = () => {
     setProductForm({
       name: '',
-      category: '',
+      category_id: '',
       price: '',
       stock: '',
-      minStock: '',
+      min_stock: '',
       cost: '',
       description: ''
     });
-    setAddProductModal(true);
   };
 
-  const handleEditProduct = (product) => {
-    setSelectedProduct(product);
-    setProductForm({
-      name: product.name,
-      category: product.category,
-      price: product.price.toString(),
-      stock: product.stock.toString(),
-      minStock: product.minStock.toString(),
-      cost: product.cost.toString(),
-      description: product.description || ''
-    });
-    setEditProductModal(true);
-  };
-
-  const handleStockAdjustment = (product) => {
-    setSelectedProduct(product);
+  const resetStockForm = () => {
     setStockForm({
       type: 'add',
       quantity: '',
       reason: ''
     });
+  };
+
+  // Funciones CRUD para productos
+  const handleCreateProduct = async () => {
+    try {
+      const newProduct = await inventoryService.createProduct({
+        ...productForm,
+        price: parseFloat(productForm.price) || 0,
+        stock: parseInt(productForm.stock) || 0,
+        min_stock: parseInt(productForm.min_stock) || 0,
+        cost: parseFloat(productForm.cost) || 0
+      });
+
+      setProducts(prev => [newProduct, ...prev]);
+      setAddProductModal(false);
+      resetProductForm();
+      setSnackbar({ open: true, message: 'Producto creado exitosamente', severity: 'success' });
+      
+    } catch (error) {
+      console.error('Error creating product:', error);
+      setSnackbar({ open: true, message: 'Error al crear el producto', severity: 'error' });
+    }
+  };
+
+  const handleEditProduct = async () => {
+    try {
+      const updatedProduct = await inventoryService.updateProduct(selectedProduct.id, {
+        ...productForm,
+        price: parseFloat(productForm.price) || 0,
+        stock: parseInt(productForm.stock) || 0,
+        min_stock: parseInt(productForm.min_stock) || 0,
+        cost: parseFloat(productForm.cost) || 0
+      });
+
+      setProducts(prev => prev.map(p => p.id === selectedProduct.id ? updatedProduct : p));
+      setEditProductModal(false);
+      setSelectedProduct(null);
+      resetProductForm();
+      setSnackbar({ open: true, message: 'Producto actualizado exitosamente', severity: 'success' });
+      
+    } catch (error) {
+      console.error('Error updating product:', error);
+      setSnackbar({ open: true, message: 'Error al actualizar el producto', severity: 'error' });
+    }
+  };
+
+  const handleDeleteProduct = async (productId) => {
+    if (window.confirm('¿Estás seguro de que quieres eliminar este producto?')) {
+      try {
+        await inventoryService.deleteProduct(productId);
+        setProducts(prev => prev.filter(p => p.id !== productId));
+        setSnackbar({ open: true, message: 'Producto eliminado exitosamente', severity: 'success' });
+        
+      } catch (error) {
+        console.error('Error deleting product:', error);
+        setSnackbar({ open: true, message: 'Error al eliminar el producto', severity: 'error' });
+      }
+    }
+  };
+
+  // Funciones para movimientos de stock
+  const handleStockMovement = async () => {
+    try {
+      const movement = {
+        product: selectedProduct.id,
+        movement_type: stockForm.type,
+        quantity: parseInt(stockForm.quantity),
+        reason: stockForm.reason
+      };
+
+      await inventoryService.createStockMovement(movement);
+
+      // Actualizar el stock del producto localmente
+      let newStock = selectedProduct.stock;
+      switch (stockForm.type) {
+        case 'add':
+          newStock += parseInt(stockForm.quantity);
+          break;
+        case 'remove':
+          newStock -= parseInt(stockForm.quantity);
+          break;
+        case 'set':
+          newStock = parseInt(stockForm.quantity);
+          break;
+        default:
+          break;
+      }
+
+      setProducts(prev => prev.map(p => 
+        p.id === selectedProduct.id ? { ...p, stock: Math.max(0, newStock) } : p
+      ));
+
+      setStockModal(false);
+      setSelectedProduct(null);
+      resetStockForm();
+      setSnackbar({ open: true, message: 'Movimiento de stock registrado exitosamente', severity: 'success' });
+      
+    } catch (error) {
+      console.error('Error creating stock movement:', error);
+      setSnackbar({ open: true, message: 'Error al registrar el movimiento de stock', severity: 'error' });
+    }
+  };
+
+  // Funciones para categorías
+  const handleCreateCategory = async () => {
+    try {
+      const newCategory = await inventoryService.createCategory(categoryForm);
+      setCategories(prev => [...prev, newCategory]);
+      setAddCategoryModal(false);
+      setCategoryForm({ name: '', description: '' });
+      setSnackbar({ open: true, message: 'Categoría creada exitosamente', severity: 'success' });
+      
+    } catch (error) {
+      console.error('Error creating category:', error);
+      setSnackbar({ open: true, message: 'Error al crear la categoría', severity: 'error' });
+    }
+  };
+
+  // Funciones de UI
+  const openEditProduct = (product) => {
+    setSelectedProduct(product);
+    setProductForm({
+      name: product.name || '',
+      category_id: product.category_id || '',
+      price: product.price || '',
+      stock: product.stock || '',
+      min_stock: product.min_stock || '',
+      cost: product.cost || '',
+      description: product.description || ''
+    });
+    setEditProductModal(true);
+  };
+
+  const openStockModal = (product) => {
+    setSelectedProduct(product);
     setStockModal(true);
   };
 
-  const handleSaveProduct = () => {
-    // Aquí conectaremos con el backend
-    console.log('Guardando producto:', productForm);
-    setSnackbar({ open: true, message: 'Producto guardado exitosamente', severity: 'success' });
-    setAddProductModal(false);
-    setEditProductModal(false);
-  };
-
-  const handleStockUpdate = () => {
-    // Aquí conectaremos con el backend
-    console.log('Actualizando stock:', stockForm, selectedProduct);
-    setSnackbar({ open: true, message: 'Stock actualizado exitosamente', severity: 'success' });
-    setStockModal(false);
-  };
-
-  const handleDeleteProduct = (productId) => {
-    // Aquí conectaremos con el backend
-    console.log('Eliminando producto:', productId);
-    setSnackbar({ open: true, message: 'Producto eliminado', severity: 'info' });
-  };
-
   // Verificar permisos
+  const canViewInventory = hasPermission('can_view_inventory') || businessInfo?.is_owner;
   const canManageInventory = hasPermission('can_manage_inventory') || businessInfo?.is_owner;
-  const canViewInventory = hasPermission('can_view_inventory') || canManageInventory;
 
   if (!canViewInventory) {
     return (
@@ -273,128 +358,83 @@ const Inventory = () => {
     );
   }
 
+  if (loading) {
+    return (
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+          <CircularProgress size={50} />
+          <Typography variant="h6" sx={{ ml: 2 }}>
+            Cargando inventario...
+          </Typography>
+        </Box>
+      </Container>
+    );
+  }
+
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth="xl" sx={{ py: 4 }}>
       {/* Header */}
-      <Box sx={{ mb: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+      <Paper elevation={2} sx={{ p: 3, mb: 4 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Box>
-            <Typography variant="h4" fontWeight="bold" gutterBottom>
-              Inventario
+            <Typography variant="h4" component="h1" gutterBottom>
+              📦 Inventario
             </Typography>
-            <Typography variant="body1" color="text.secondary">
-              Gestiona los productos de {businessInfo?.name || 'tu negocio'}
+            <Typography variant="body1" color="textSecondary">
+              Gestiona productos, categorías y movimientos de stock
             </Typography>
           </Box>
+          
           {canManageInventory && (
             <Box sx={{ display: 'flex', gap: 1 }}>
               <Button
                 variant="outlined"
-                startIcon={<Download />}
-                size="small"
+                startIcon={<Category />}
+                onClick={() => setAddCategoryModal(true)}
               >
-                Exportar
+                Nueva Categoría
               </Button>
               <Button
-                variant="outlined"
-                startIcon={<Upload />}
-                size="small"
+                variant="contained"
+                startIcon={<Add />}
+                onClick={() => setAddProductModal(true)}
               >
-                Importar
+                Nuevo Producto
               </Button>
             </Box>
           )}
         </Box>
+      </Paper>
 
-        {/* Estadísticas rápidas */}
-        <Grid container spacing={3} sx={{ mb: 3 }}>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent sx={{ textAlign: 'center' }}>
-                <Avatar sx={{ bgcolor: 'primary.main', mx: 'auto', mb: 2 }}>
-                  <Inventory2 />
-                </Avatar>
-                <Typography variant="h4" fontWeight="bold">
-                  {totalProducts}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Total Productos
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
+      {/* Error */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
 
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent sx={{ textAlign: 'center' }}>
-                <Avatar sx={{ bgcolor: 'warning.main', mx: 'auto', mb: 2 }}>
-                  <TrendingDown />
-                </Avatar>
-                <Typography variant="h4" fontWeight="bold">
-                  {lowStockProducts}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Stock Bajo
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
+      {/* Tabs */}
+      <Paper sx={{ mb: 3 }}>
+        <Tabs
+          value={tabValue}
+          onChange={(e, newValue) => setTabValue(newValue)}
+          variant="scrollable"
+          scrollButtons="auto"
+          sx={{ borderBottom: 1, borderColor: 'divider' }}
+        >
+          <Tab icon={<Inventory2 />} label="Productos" />
+          <Tab icon={<Analytics />} label="Movimientos" />
+          <Tab icon={<Category />} label="Categorías" />
+        </Tabs>
 
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent sx={{ textAlign: 'center' }}>
-                <Avatar sx={{ bgcolor: 'error.main', mx: 'auto', mb: 2 }}>
-                  <Warning />
-                </Avatar>
-                <Typography variant="h4" fontWeight="bold">
-                  {outOfStockProducts}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Sin Stock
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent sx={{ textAlign: 'center' }}>
-                <Avatar sx={{ bgcolor: 'success.main', mx: 'auto', mb: 2 }}>
-                  <AttachMoney />
-                </Avatar>
-                <Typography variant="h4" fontWeight="bold">
-                  ${totalValue.toFixed(2)}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Valor Total
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
-      </Box>
-
-      <Paper elevation={3} sx={{ borderRadius: 3, overflow: 'hidden' }}>
-        {/* Tabs */}
-        <Box sx={{ 
-          borderBottom: 1, 
-          borderColor: 'divider',
-          bgcolor: alpha(theme.palette.primary.main, 0.02)
-        }}>
-          <Tabs value={tabValue} onChange={handleTabChange}>
-            <Tab label="Productos" icon={<Inventory2 />} iconPosition="start" />
-            <Tab label="Categorías" icon={<Category />} iconPosition="start" />
-            <Tab label="Análisis" icon={<Analytics />} iconPosition="start" />
-          </Tabs>
-        </Box>
-
-        {/* Tab Panel 0 - Productos */}
+        {/* Tab Panel: Productos */}
         <TabPanel value={tabValue} index={0}>
-          {/* Filtros y búsqueda */}
-          <Box sx={{ mb: 3, display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+          {/* Filtros */}
+          <Box sx={{ mb: 3, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
             <TextField
-              size="small"
               placeholder="Buscar productos..."
+              variant="outlined"
+              size="small"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               InputProps={{
@@ -406,8 +446,8 @@ const Inventory = () => {
               }}
               sx={{ minWidth: 250 }}
             />
-
-            <FormControl size="small" sx={{ minWidth: 150 }}>
+            
+            <FormControl size="small" sx={{ minWidth: 180 }}>
               <InputLabel>Categoría</InputLabel>
               <Select
                 value={selectedCategory}
@@ -415,13 +455,13 @@ const Inventory = () => {
                 label="Categoría"
               >
                 {categories.map((category) => (
-                  <MenuItem key={category} value={category}>
-                    {category}
+                  <MenuItem key={category.id} value={category.id}>
+                    {category.name}
                   </MenuItem>
                 ))}
               </Select>
             </FormControl>
-
+            
             <FormControl size="small" sx={{ minWidth: 150 }}>
               <InputLabel>Estado</InputLabel>
               <Select
@@ -430,291 +470,268 @@ const Inventory = () => {
                 label="Estado"
               >
                 <MenuItem value="all">Todos</MenuItem>
-                <MenuItem value="active">Disponible</MenuItem>
-                <MenuItem value="low_stock">Stock Bajo</MenuItem>
-                <MenuItem value="out_of_stock">Sin Stock</MenuItem>
+                <MenuItem value="in_stock">En stock</MenuItem>
+                <MenuItem value="low_stock">Stock bajo</MenuItem>
+                <MenuItem value="out_of_stock">Sin stock</MenuItem>
               </Select>
             </FormControl>
-
-            <Button
-              variant="outlined"
-              startIcon={<Refresh />}
-              onClick={() => {
-                setSearchTerm('');
-                setSelectedCategory('Todas');
-                setStatusFilter('all');
-              }}
-            >
-              Limpiar
-            </Button>
-
-            <Box sx={{ flexGrow: 1 }} />
-
-            {canManageInventory && (
-              <Button
-                variant="contained"
-                startIcon={<Add />}
-                onClick={handleAddProduct}
-              >
-                Nuevo Producto
-              </Button>
-            )}
           </Box>
 
-          {/* Tabla de productos */}
-          <TableContainer>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Producto</TableCell>
-                  <TableCell>Categoría</TableCell>
-                  <TableCell align="right">Precio</TableCell>
-                  <TableCell align="center">Stock</TableCell>
-                  <TableCell align="center">Estado</TableCell>
-                  <TableCell align="center">Acciones</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredProducts
-                  .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                  .map((product) => (
-                    <TableRow key={product.id} hover>
-                      <TableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                          <Avatar
-                            src={product.image}
-                            sx={{ width: 40, height: 40 }}
-                          >
-                            <Inventory2 />
-                          </Avatar>
-                          <Box>
-                            <Typography variant="subtitle2" fontWeight={600}>
-                              {product.name}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              Actualizado: {product.lastUpdate}
-                            </Typography>
-                          </Box>
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <Chip label={product.category} size="small" variant="outlined" />
-                      </TableCell>
-                      <TableCell align="right">
-                        <Typography variant="subtitle2" fontWeight={600}>
-                          ${product.price}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="center">
-                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
-                          {getStockIcon(product)}
-                          <Typography variant="body2" fontWeight={600}>
-                            {product.stock}
-                          </Typography>
-                        </Box>
-                      </TableCell>
-                      <TableCell align="center">
-                        {getStatusChip(product)}
-                      </TableCell>
-                      <TableCell align="center">
-                        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5 }}>
-                          <Tooltip title="Ver detalles">
-                            <IconButton size="small">
-                              <Visibility />
-                            </IconButton>
-                          </Tooltip>
+          {/* Lista de productos */}
+          {filteredProducts.length === 0 ? (
+            <Paper sx={{ p: 4, textAlign: 'center' }}>
+              <Typography variant="h6" color="textSecondary">
+                No se encontraron productos
+              </Typography>
+              <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+                {products.length === 0 
+                  ? 'Agrega tu primer producto para comenzar'
+                  : 'Intenta ajustar los filtros de búsqueda'
+                }
+              </Typography>
+            </Paper>
+          ) : (
+            <>
+              <TableContainer component={Paper}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Producto</TableCell>
+                      <TableCell>Categoría</TableCell>
+                      <TableCell align="right">Precio</TableCell>
+                      <TableCell align="right">Stock</TableCell>
+                      <TableCell align="center">Estado</TableCell>
+                      {canManageInventory && <TableCell align="center">Acciones</TableCell>}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {filteredProducts
+                      .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                      .map((product) => (
+                        <TableRow key={product.id} hover>
+                          <TableCell>
+                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                              <Avatar
+                                src={product.image}
+                                sx={{ mr: 2, bgcolor: theme.palette.primary.light }}
+                              >
+                                <Inventory2 />
+                              </Avatar>
+                              <Box>
+                                <Typography variant="body1" fontWeight="medium">
+                                  {product.name}
+                                </Typography>
+                                {product.description && (
+                                  <Typography variant="body2" color="textSecondary">
+                                    {product.description}
+                                  </Typography>
+                                )}
+                              </Box>
+                            </Box>
+                          </TableCell>
+                          <TableCell>{getCategoryName(product.category_id)}</TableCell>
+                          <TableCell align="right">{formatCurrency(product.price)}</TableCell>
+                          <TableCell align="right">
+                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                              <Typography variant="body2">
+                                {product.stock}
+                              </Typography>
+                              {product.min_stock && (
+                                <Typography variant="caption" color="textSecondary" sx={{ ml: 1 }}>
+                                  / {product.min_stock}
+                                </Typography>
+                              )}
+                            </Box>
+                          </TableCell>
+                          <TableCell align="center">
+                            {getStatusChip(product)}
+                          </TableCell>
                           {canManageInventory && (
-                            <>
+                            <TableCell align="center">
                               <Tooltip title="Ajustar stock">
-                                <IconButton 
+                                <IconButton
                                   size="small"
-                                  onClick={() => handleStockAdjustment(product)}
+                                  onClick={() => openStockModal(product)}
+                                  color="primary"
                                 >
                                   <TrendingUp />
                                 </IconButton>
                               </Tooltip>
                               <Tooltip title="Editar">
-                                <IconButton 
+                                <IconButton
                                   size="small"
-                                  onClick={() => handleEditProduct(product)}
+                                  onClick={() => openEditProduct(product)}
+                                  color="default"
                                 >
                                   <Edit />
                                 </IconButton>
                               </Tooltip>
                               <Tooltip title="Eliminar">
-                                <IconButton 
-                                  size="small" 
-                                  color="error"
+                                <IconButton
+                                  size="small"
                                   onClick={() => handleDeleteProduct(product.id)}
+                                  color="error"
                                 >
                                   <Delete />
                                 </IconButton>
                               </Tooltip>
-                            </>
+                            </TableCell>
                           )}
-                        </Box>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+              
+              <TablePagination
+                component="div"
+                count={filteredProducts.length}
+                page={page}
+                onPageChange={(e, newPage) => setPage(newPage)}
+                rowsPerPage={rowsPerPage}
+                onRowsPerPageChange={(e) => {
+                  setRowsPerPage(parseInt(e.target.value, 10));
+                  setPage(0);
+                }}
+                rowsPerPageOptions={[5, 10, 25, 50]}
+                labelRowsPerPage="Filas por página:"
+                labelDisplayedRows={({ from, to, count }) =>
+                  `${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
+                }
+              />
+            </>
+          )}
+        </TabPanel>
+
+        {/* Tab Panel: Movimientos de Stock */}
+        <TabPanel value={tabValue} index={1}>
+          {stockMovements.length === 0 ? (
+            <Paper sx={{ p: 4, textAlign: 'center' }}>
+              <Typography variant="h6" color="textSecondary">
+                No hay movimientos de stock registrados
+              </Typography>
+            </Paper>
+          ) : (
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Fecha</TableCell>
+                    <TableCell>Producto</TableCell>
+                    <TableCell>Tipo</TableCell>
+                    <TableCell align="right">Cantidad</TableCell>
+                    <TableCell>Motivo</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {stockMovements.map((movement) => (
+                    <TableRow key={movement.id}>
+                      <TableCell>
+                        {new Date(movement.created_at || movement.date).toLocaleDateString()}
                       </TableCell>
+                      <TableCell>
+                        {movement.product_name || movement.product?.name || `Producto #${movement.product}`}
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={movement.movement_type || movement.type}
+                          size="small"
+                          color={movement.movement_type === 'add' ? 'success' : 'error'}
+                        />
+                      </TableCell>
+                      <TableCell align="right">{movement.quantity}</TableCell>
+                      <TableCell>{movement.reason || 'N/A'}</TableCell>
                     </TableRow>
                   ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-
-          {/* Paginación */}
-          <TablePagination
-            component="div"
-            count={filteredProducts.length}
-            page={page}
-            onPageChange={(e, newPage) => setPage(newPage)}
-            rowsPerPage={rowsPerPage}
-            onRowsPerPageChange={(e) => setRowsPerPage(parseInt(e.target.value, 10))}
-            labelRowsPerPage="Filas por página:"
-          />
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
         </TabPanel>
 
-        {/* Tab Panel 1 - Categorías */}
-        <TabPanel value={tabValue} index={1}>
-          <Grid container spacing={3}>
-            {categories.filter(cat => cat !== 'Todas').map((category) => {
-              const categoryProducts = products.filter(p => p.category === category);
-              const categoryValue = categoryProducts.reduce((sum, p) => sum + (p.price * p.stock), 0);
-              
-              return (
-                <Grid item xs={12} sm={6} md={4} key={category}>
-                  <Card>
-                    <CardContent>
-                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                        <Avatar sx={{ bgcolor: 'secondary.main', mr: 2 }}>
-                          <Category />
-                        </Avatar>
-                        <Typography variant="h6">{category}</Typography>
-                      </Box>
-                      <Stack spacing={1}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <Typography variant="body2">Productos:</Typography>
-                          <Typography variant="body2" fontWeight={600}>
-                            {categoryProducts.length}
-                          </Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <Typography variant="body2">Valor:</Typography>
-                          <Typography variant="body2" fontWeight={600}>
-                            ${categoryValue.toFixed(2)}
-                          </Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <Typography variant="body2">Stock total:</Typography>
-                          <Typography variant="body2" fontWeight={600}>
-                            {categoryProducts.reduce((sum, p) => sum + p.stock, 0)}
-                          </Typography>
-                        </Box>
-                      </Stack>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              );
-            })}
-          </Grid>
-        </TabPanel>
-
-        {/* Tab Panel 2 - Análisis */}
+        {/* Tab Panel: Categorías */}
         <TabPanel value={tabValue} index={2}>
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    Productos más Vendidos
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Análisis en desarrollo - Se conectará con datos de ventas
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    Tendencias de Stock
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Gráfico de movimientos de inventario
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
+          <Grid container spacing={2}>
+            {categories.filter(cat => cat.id !== '').map((category) => (
+              <Grid item xs={12} sm={6} md={4} key={category.id}>
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>
+                      {category.name}
+                    </Typography>
+                    {category.description && (
+                      <Typography variant="body2" color="textSecondary">
+                        {category.description}
+                      </Typography>
+                    )}
+                    <Typography variant="caption" color="textSecondary" sx={{ mt: 1, display: 'block' }}>
+                      {products.filter(p => p.category_id === category.id).length} productos
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
           </Grid>
         </TabPanel>
       </Paper>
 
-      {/* Modal Agregar/Editar Producto */}
-      <Dialog 
-        open={addProductModal || editProductModal} 
-        onClose={() => {
-          setAddProductModal(false);
-          setEditProductModal(false);
-        }}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>
-          {addProductModal ? 'Agregar Producto' : 'Editar Producto'}
-        </DialogTitle>
+      {/* Modal: Agregar Producto */}
+      <Dialog open={addProductModal} onClose={() => setAddProductModal(false)} maxWidth="md" fullWidth>
+        <DialogTitle>Agregar Nuevo Producto</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12}>
+            <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
                 label="Nombre del producto"
                 value={productForm.name}
-                onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
+                onChange={(e) => handleProductFormChange('name', e.target.value)}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
               <FormControl fullWidth>
                 <InputLabel>Categoría</InputLabel>
                 <Select
-                  value={productForm.category}
-                  onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
+                  value={productForm.category_id}
+                  onChange={(e) => handleProductFormChange('category_id', e.target.value)}
                   label="Categoría"
                 >
-                  {categories.filter(cat => cat !== 'Todas').map((category) => (
-                    <MenuItem key={category} value={category}>
-                      {category}
+                  {categories.filter(cat => cat.id !== '').map((category) => (
+                    <MenuItem key={category.id} value={category.id}>
+                      {category.name}
                     </MenuItem>
                   ))}
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12} sm={4}>
               <TextField
                 fullWidth
                 label="Precio"
                 type="number"
                 value={productForm.price}
-                onChange={(e) => setProductForm({ ...productForm, price: e.target.value })}
+                onChange={(e) => handleProductFormChange('price', e.target.value)}
                 InputProps={{
                   startAdornment: <InputAdornment position="start">$</InputAdornment>,
                 }}
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12} sm={4}>
               <TextField
                 fullWidth
                 label="Stock inicial"
                 type="number"
                 value={productForm.stock}
-                onChange={(e) => setProductForm({ ...productForm, stock: e.target.value })}
+                onChange={(e) => handleProductFormChange('stock', e.target.value)}
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12} sm={4}>
               <TextField
                 fullWidth
                 label="Stock mínimo"
                 type="number"
-                value={productForm.minStock}
-                onChange={(e) => setProductForm({ ...productForm, minStock: e.target.value })}
+                value={productForm.min_stock}
+                onChange={(e) => handleProductFormChange('min_stock', e.target.value)}
               />
             </Grid>
             <Grid item xs={12}>
@@ -724,44 +741,118 @@ const Inventory = () => {
                 multiline
                 rows={3}
                 value={productForm.description}
-                onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
+                onChange={(e) => handleProductFormChange('description', e.target.value)}
               />
             </Grid>
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => {
-            setAddProductModal(false);
-            setEditProductModal(false);
-          }}>
-            Cancelar
-          </Button>
-          <Button variant="contained" onClick={handleSaveProduct}>
-            Guardar
+          <Button onClick={() => setAddProductModal(false)}>Cancelar</Button>
+          <Button onClick={handleCreateProduct} variant="contained">
+            Crear Producto
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Modal Ajustar Stock */}
+      {/* Modal: Editar Producto */}
+      <Dialog open={editProductModal} onClose={() => setEditProductModal(false)} maxWidth="md" fullWidth>
+        <DialogTitle>Editar Producto</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Nombre del producto"
+                value={productForm.name}
+                onChange={(e) => handleProductFormChange('name', e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Categoría</InputLabel>
+                <Select
+                  value={productForm.category_id}
+                  onChange={(e) => handleProductFormChange('category_id', e.target.value)}
+                  label="Categoría"
+                >
+                  {categories.filter(cat => cat.id !== '').map((category) => (
+                    <MenuItem key={category.id} value={category.id}>
+                      {category.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                label="Precio"
+                type="number"
+                value={productForm.price}
+                onChange={(e) => handleProductFormChange('price', e.target.value)}
+                InputProps={{
+                  startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                label="Stock actual"
+                type="number"
+                value={productForm.stock}
+                onChange={(e) => handleProductFormChange('stock', e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                label="Stock mínimo"
+                type="number"
+                value={productForm.min_stock}
+                onChange={(e) => handleProductFormChange('min_stock', e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Descripción"
+                multiline
+                rows={3}
+                value={productForm.description}
+                onChange={(e) => handleProductFormChange('description', e.target.value)}
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditProductModal(false)}>Cancelar</Button>
+          <Button onClick={handleEditProduct} variant="contained">
+            Guardar Cambios
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Modal: Movimiento de Stock */}
       <Dialog open={stockModal} onClose={() => setStockModal(false)} maxWidth="sm" fullWidth>
         <DialogTitle>
           Ajustar Stock - {selectedProduct?.name}
         </DialogTitle>
         <DialogContent>
           <Box sx={{ mt: 2 }}>
-            <Typography variant="body2" color="text.secondary" gutterBottom>
-              Stock actual: {selectedProduct?.stock} unidades
+            <Typography variant="body2" color="textSecondary" gutterBottom>
+              Stock actual: {selectedProduct?.stock}
             </Typography>
             
-            <FormControl fullWidth sx={{ mb: 2 }}>
+            <FormControl fullWidth sx={{ mb: 3 }}>
               <InputLabel>Tipo de movimiento</InputLabel>
               <Select
                 value={stockForm.type}
-                onChange={(e) => setStockForm({ ...stockForm, type: e.target.value })}
+                onChange={(e) => setStockForm(prev => ({ ...prev, type: e.target.value }))}
                 label="Tipo de movimiento"
               >
                 <MenuItem value="add">Agregar stock</MenuItem>
-                <MenuItem value="remove">Retirar stock</MenuItem>
+                <MenuItem value="remove">Quitar stock</MenuItem>
                 <MenuItem value="set">Establecer stock</MenuItem>
               </Select>
             </FormControl>
@@ -771,8 +862,9 @@ const Inventory = () => {
               label="Cantidad"
               type="number"
               value={stockForm.quantity}
-              onChange={(e) => setStockForm({ ...stockForm, quantity: e.target.value })}
-              sx={{ mb: 2 }}
+              onChange={(e) => setStockForm(prev => ({ ...prev, quantity: e.target.value }))}
+              sx={{ mb: 3 }}
+              inputProps={{ min: 0 }}
             />
 
             <TextField
@@ -781,44 +873,67 @@ const Inventory = () => {
               multiline
               rows={2}
               value={stockForm.reason}
-              onChange={(e) => setStockForm({ ...stockForm, reason: e.target.value })}
-              placeholder="Ej: Inventario físico, venta, merma..."
+              onChange={(e) => setStockForm(prev => ({ ...prev, reason: e.target.value }))}
+              placeholder="Describe el motivo del ajuste de stock"
             />
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setStockModal(false)}>
-            Cancelar
-          </Button>
-          <Button variant="contained" onClick={handleStockUpdate}>
-            Actualizar Stock
+          <Button onClick={() => setStockModal(false)}>Cancelar</Button>
+          <Button 
+            onClick={handleStockMovement} 
+            variant="contained"
+            disabled={!stockForm.quantity || !stockForm.reason}
+          >
+            Registrar Movimiento
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* FAB para agregar producto (móvil) */}
-      {canManageInventory && (
-        <Fab
-          color="primary"
-          sx={{
-            position: 'fixed',
-            bottom: 16,
-            right: 16,
-            display: { xs: 'flex', sm: 'none' }
-          }}
-          onClick={handleAddProduct}
-        >
-          <Add />
-        </Fab>
-      )}
+      {/* Modal: Agregar Categoría */}
+      <Dialog open={addCategoryModal} onClose={() => setAddCategoryModal(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Agregar Nueva Categoría</DialogTitle>
+        <DialogContent>
+          <TextField
+            fullWidth
+            label="Nombre de la categoría"
+            value={categoryForm.name}
+            onChange={(e) => setCategoryForm(prev => ({ ...prev, name: e.target.value }))}
+            sx={{ mt: 2, mb: 3 }}
+          />
+          <TextField
+            fullWidth
+            label="Descripción"
+            multiline
+            rows={3}
+            value={categoryForm.description}
+            onChange={(e) => setCategoryForm(prev => ({ ...prev, description: e.target.value }))}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAddCategoryModal(false)}>Cancelar</Button>
+          <Button 
+            onClick={handleCreateCategory} 
+            variant="contained"
+            disabled={!categoryForm.name}
+          >
+            Crear Categoría
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Snackbar */}
       <Snackbar
         open={snackbar.open}
-        autoHideDuration={4000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
       >
-        <Alert severity={snackbar.severity} variant="filled">
+        <Alert 
+          onClose={() => setSnackbar(prev => ({ ...prev, open: false }))} 
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
           {snackbar.message}
         </Alert>
       </Snackbar>

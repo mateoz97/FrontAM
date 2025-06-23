@@ -5,7 +5,7 @@ import {
   Chip, Avatar, Button, IconButton, LinearProgress, Alert,
   Dialog, DialogTitle, DialogContent, DialogActions, List,
   ListItem, ListItemText, Divider, Stack, Badge, Fab,
-  useTheme, alpha, Tooltip, CardHeader, CardActions
+  useTheme, alpha, Tooltip, CardHeader, CardActions, CircularProgress
 } from '@mui/material';
 import {
   Schedule, CheckCircle, Cancel, Pause, PlayArrow,
@@ -15,89 +15,12 @@ import {
   AccessTime, TrendingUp, Notifications, Print
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
+import ordersService from '../services/orders.service';
 
-// Datos mock para desarrollo - simulando pedidos en tiempo real
-const mockOrders = [
-  {
-    id: 'ORD-001',
-    orderNumber: 1,
-    customerName: 'Juan Pérez',
-    customerPhone: '+1234567890',
-    type: 'dine_in', // dine_in, takeaway, delivery
-    tableNumber: 5,
-    status: 'pending', // pending, preparing, ready, completed, cancelled
-    priority: 'normal', // high, normal, low
-    estimatedTime: 15, // minutos
-    timeElapsed: 3, // minutos desde que se creó
-    createdAt: new Date(Date.now() - 3 * 60 * 1000), // hace 3 minutos
-    items: [
-      { id: 1, name: 'Hamburguesa Clásica', quantity: 2, notes: 'Sin cebolla' },
-      { id: 2, name: 'Papas Fritas', quantity: 2, notes: '' },
-      { id: 3, name: 'Coca Cola', quantity: 2, notes: 'Con hielo' }
-    ],
-    total: 29.98,
-    notes: 'Cliente tiene alergia a nueces'
-  },
-  {
-    id: 'ORD-002',
-    orderNumber: 2,
-    customerName: 'María González',
-    customerPhone: '+1234567891',
-    type: 'takeaway',
-    tableNumber: null,
-    status: 'preparing',
-    priority: 'high',
-    estimatedTime: 20,
-    timeElapsed: 8,
-    createdAt: new Date(Date.now() - 8 * 60 * 1000),
-    items: [
-      { id: 1, name: 'Pizza Margherita', quantity: 1, notes: 'Extra queso' },
-      { id: 2, name: 'Ensalada César', quantity: 1, notes: 'Aderezo aparte' }
-    ],
-    total: 25.98,
-    notes: ''
-  },
-  {
-    id: 'ORD-003',
-    orderNumber: 3,
-    customerName: 'Carlos Rodríguez',
-    customerPhone: '+1234567892',
-    type: 'delivery',
-    tableNumber: null,
-    status: 'ready',
-    priority: 'normal',
-    estimatedTime: 25,
-    timeElapsed: 22,
-    createdAt: new Date(Date.now() - 22 * 60 * 1000),
-    items: [
-      { id: 1, name: 'Pasta Carbonara', quantity: 1, notes: '' },
-      { id: 2, name: 'Pan de Ajo', quantity: 1, notes: '' },
-      { id: 3, name: 'Vino Tinto', quantity: 1, notes: '' }
-    ],
-    total: 32.50,
-    notes: 'Dirección: Calle 123 #45-67'
-  },
-  {
-    id: 'ORD-004',
-    orderNumber: 4,
-    customerName: 'Ana Martínez',
-    customerPhone: '+1234567893',
-    type: 'dine_in',
-    tableNumber: 12,
-    status: 'pending',
-    priority: 'low',
-    estimatedTime: 18,
-    timeElapsed: 1,
-    createdAt: new Date(Date.now() - 1 * 60 * 1000),
-    items: [
-      { id: 1, name: 'Salmón a la Plancha', quantity: 1, notes: 'Término medio' },
-      { id: 2, name: 'Verduras al Vapor', quantity: 1, notes: '' },
-      { id: 3, name: 'Agua con Gas', quantity: 1, notes: 'Con limón' }
-    ],
-    total: 28.75,
-    notes: ''
-  }
-];
+// Función auxiliar para calcular tiempo transcurrido
+const calculateTimeElapsed = (createdAt) => {
+  return Math.floor((Date.now() - new Date(createdAt).getTime()) / 60000);
+};
 
 const OrdersBoard = () => {
   const { getUserBusiness, hasPermission } = useAuth();
@@ -105,12 +28,18 @@ const OrdersBoard = () => {
   const businessInfo = getUserBusiness();
   
   // Estados principales
-  const [orders, setOrders] = useState(mockOrders);
+  const [orders, setOrders] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [detailModal, setDetailModal] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [lastUpdate, setLastUpdate] = useState(new Date());
+  
+  // WebSocket para tiempo real
+  const wsRef = useRef(null);
   
   // Ref para el contenedor principal
   const boardRef = useRef(null);
@@ -124,6 +53,109 @@ const OrdersBoard = () => {
     avgWaitTime: 0
   });
 
+  // Cargar órdenes iniciales
+  useEffect(() => {
+    const loadOrders = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Cargar todas las órdenes activas (no entregadas ni canceladas)
+        const allOrders = await ordersService.getOrders({
+          status__in: 'pending,confirmed,preparing,ready'
+        });
+        
+        // Procesar órdenes para agregar timeElapsed
+        const processedOrders = allOrders.map(order => ({
+          ...order,
+          timeElapsed: calculateTimeElapsed(order.created_at || order.createdAt),
+          // Mapear campos del backend a campos del frontend
+          customerName: order.customer_name || order.customer || 'Cliente',
+          customerPhone: order.customer_phone || order.phone || '',
+          createdAt: new Date(order.created_at || order.createdAt),
+          // Mapear tipo de orden
+          type: order.order_type || order.type || 'dine_in',
+          // Mapear mesa
+          tableNumber: order.table_number || order.table || null,
+          // Tiempo estimado (si no viene del backend, usar un default)
+          estimatedTime: order.estimated_time || 20,
+          // Prioridad (si no viene del backend, usar normal)
+          priority: order.priority || 'normal',
+          // Notas
+          notes: order.notes || order.special_instructions || ''
+        }));
+        
+        setOrders(processedOrders);
+        setLastUpdate(new Date());
+        
+      } catch (error) {
+        console.error('Error loading orders:', error);
+        setError('Error al cargar los pedidos');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (businessInfo) {
+      loadOrders();
+    }
+  }, [businessInfo]);
+
+  // Configurar WebSocket para actualizaciones en tiempo real
+  useEffect(() => {
+    if (!autoRefresh || !businessInfo) return;
+
+    // Conectar WebSocket
+    wsRef.current = ordersService.subscribeToOrderUpdates((update) => {
+      console.log('📡 Actualización de orden en tiempo real:', update);
+      
+      // Reproducir sonido para nuevas órdenes
+      if (soundEnabled && update.type === 'new_order') {
+        console.log('🔔 Nueva orden recibida!');
+        // Aquí podrías agregar un sonido real
+      }
+
+      // Actualizar la lista de órdenes
+      setOrders(prevOrders => {
+        const orderIndex = prevOrders.findIndex(o => o.id === update.order.id);
+        
+        if (update.type === 'new_order' || orderIndex === -1) {
+          // Nueva orden
+          const newOrder = {
+            ...update.order,
+            timeElapsed: calculateTimeElapsed(update.order.created_at),
+            customerName: update.order.customer_name || 'Cliente',
+            customerPhone: update.order.customer_phone || '',
+            createdAt: new Date(update.order.created_at),
+            type: update.order.order_type || 'dine_in',
+            tableNumber: update.order.table_number || null,
+            estimatedTime: update.order.estimated_time || 20,
+            priority: update.order.priority || 'normal',
+            notes: update.order.notes || ''
+          };
+          return [newOrder, ...prevOrders];
+        } else {
+          // Actualizar orden existente
+          const updatedOrders = [...prevOrders];
+          updatedOrders[orderIndex] = {
+            ...updatedOrders[orderIndex],
+            ...update.order,
+            timeElapsed: calculateTimeElapsed(update.order.created_at || updatedOrders[orderIndex].createdAt)
+          };
+          return updatedOrders;
+        }
+      });
+
+      setLastUpdate(new Date());
+    });
+
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
+  }, [autoRefresh, businessInfo, soundEnabled]);
+
   // Actualizar estadísticas cuando cambien los pedidos
   useEffect(() => {
     const newStats = {
@@ -136,7 +168,7 @@ const OrdersBoard = () => {
     setStats(newStats);
   }, [orders]);
 
-  // Simulación de tiempo real - actualizar tiempo transcurrido
+  // Actualizar tiempo transcurrido cada minuto
   useEffect(() => {
     if (!autoRefresh) return;
     
@@ -144,52 +176,13 @@ const OrdersBoard = () => {
       setOrders(prevOrders => 
         prevOrders.map(order => ({
           ...order,
-          timeElapsed: Math.floor((Date.now() - order.createdAt.getTime()) / 60000)
+          timeElapsed: calculateTimeElapsed(order.createdAt)
         }))
       );
     }, 60000); // Actualizar cada minuto
 
     return () => clearInterval(interval);
   }, [autoRefresh]);
-
-  // Simulación de nuevos pedidos (en producción esto vendría del backend)
-  useEffect(() => {
-    if (!autoRefresh) return;
-    
-    const newOrderInterval = setInterval(() => {
-      // Simular nuevo pedido cada 2 minutos (para demo)
-      if (Math.random() > 0.7) { // 30% de probabilidad
-        const newOrder = {
-          id: `ORD-${Date.now()}`,
-          orderNumber: orders.length + 1,
-          customerName: 'Cliente Nuevo',
-          customerPhone: '+1234567890',
-          type: ['dine_in', 'takeaway', 'delivery'][Math.floor(Math.random() * 3)],
-          tableNumber: Math.floor(Math.random() * 20) + 1,
-          status: 'pending',
-          priority: ['high', 'normal', 'low'][Math.floor(Math.random() * 3)],
-          estimatedTime: Math.floor(Math.random() * 20) + 10,
-          timeElapsed: 0,
-          createdAt: new Date(),
-          items: [
-            { id: 1, name: 'Producto Demo', quantity: 1, notes: '' }
-          ],
-          total: Math.floor(Math.random() * 50) + 10,
-          notes: ''
-        };
-        
-        setOrders(prev => [newOrder, ...prev]);
-        
-        // Reproducir sonido de nuevo pedido
-        if (soundEnabled) {
-          // En producción aquí iría un sonido real
-          console.log('🔔 Nuevo pedido recibido!');
-        }
-      }
-    }, 120000); // Cada 2 minutos
-
-    return () => clearInterval(newOrderInterval);
-  }, [orders.length, soundEnabled, autoRefresh]);
 
   // Funciones de utilidad
   const getStatusColor = (status) => {
@@ -252,19 +245,59 @@ const OrdersBoard = () => {
     return 'success';
   };
 
-  // Manejadores de eventos
-  const handleStatusChange = (orderId, newStatus) => {
-    setOrders(prev => 
-      prev.map(order => 
-        order.id === orderId 
-          ? { ...order, status: newStatus }
-          : order
-      )
-    );
+  // Función para refrescar órdenes manualmente
+  const refreshOrders = async () => {
+    try {
+      setError(null);
+      const allOrders = await ordersService.getOrders({
+        status__in: 'pending,confirmed,preparing,ready'
+      });
+      
+      const processedOrders = allOrders.map(order => ({
+        ...order,
+        timeElapsed: calculateTimeElapsed(order.created_at || order.createdAt),
+        customerName: order.customer_name || order.customer || 'Cliente',
+        customerPhone: order.customer_phone || order.phone || '',
+        createdAt: new Date(order.created_at || order.createdAt),
+        type: order.order_type || order.type || 'dine_in',
+        tableNumber: order.table_number || order.table || null,
+        estimatedTime: order.estimated_time || 20,
+        priority: order.priority || 'normal',
+        notes: order.notes || order.special_instructions || ''
+      }));
+      
+      setOrders(processedOrders);
+      setLastUpdate(new Date());
+      
+    } catch (error) {
+      console.error('Error refreshing orders:', error);
+      setError('Error al actualizar los pedidos');
+    }
+  };
 
-    // Reproducir sonido de cambio de estado
-    if (soundEnabled) {
-      console.log(`🔄 Pedido ${orderId} cambió a ${newStatus}`);
+  // Manejadores de eventos
+  const handleStatusChange = async (orderId, newStatus) => {
+    try {
+      // Actualizar estado en el backend
+      await ordersService.updateOrderStatus(orderId, newStatus);
+      
+      // Actualizar estado local optimistamente
+      setOrders(prev => 
+        prev.map(order => 
+          order.id === orderId 
+            ? { ...order, status: newStatus }
+            : order
+        )
+      );
+
+      // Reproducir sonido de cambio de estado
+      if (soundEnabled) {
+        console.log(`🔄 Pedido ${orderId} cambió a ${newStatus}`);
+      }
+      
+    } catch (error) {
+      console.error('Error updating order status:', error);
+      setError('Error al actualizar el estado del pedido');
     }
   };
 
@@ -333,12 +366,21 @@ const OrdersBoard = () => {
           </Box>
           
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            <Tooltip title="Actualizar manualmente">
+              <IconButton 
+                onClick={refreshOrders}
+                disabled={loading}
+              >
+                <Refresh />
+              </IconButton>
+            </Tooltip>
+            
             <Tooltip title="Actualización automática">
               <IconButton 
                 color={autoRefresh ? 'primary' : 'default'}
                 onClick={() => setAutoRefresh(!autoRefresh)}
               >
-                <Refresh />
+                {autoRefresh ? <Notifications /> : <Schedule />}
               </IconButton>
             </Tooltip>
             
@@ -357,16 +399,45 @@ const OrdersBoard = () => {
               </IconButton>
             </Tooltip>
             
+            {loading && <CircularProgress size={20} />}
+            
             <Chip 
               icon={<AccessTime />}
-              label={`Actualizado: ${new Date().toLocaleTimeString()}`}
+              label={`Actualizado: ${lastUpdate.toLocaleTimeString()}`}
               size="small"
               variant="outlined"
+              color={error ? 'error' : 'default'}
             />
           </Box>
         </Box>
 
-        {/* Estadísticas rápidas */}
+        {/* Mostrar errores */}
+        {error && (
+          <Alert 
+            severity="error" 
+            sx={{ mb: 3 }}
+            action={
+              <Button color="inherit" size="small" onClick={refreshOrders}>
+                Reintentar
+              </Button>
+            }
+            onClose={() => setError(null)}
+          >
+            {error}
+          </Alert>
+        )}
+
+        {/* Estado de carga inicial */}
+        {loading && orders.length === 0 ? (
+          <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+            <CircularProgress size={50} />
+            <Typography variant="h6" sx={{ ml: 2 }}>
+              Cargando pedidos...
+            </Typography>
+          </Box>
+        ) : (
+          <>
+            {/* Estadísticas rápidas */}
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={6} sm={3}>
             <Card>
@@ -495,7 +566,11 @@ const OrdersBoard = () => {
                       
                       <CardContent sx={{ pt: 0 }}>
                         <Typography variant="body2" sx={{ mb: 1 }}>
-                          {order.items.length} productos • ${order.total}
+                          {order.items?.length || order.order_items?.length || 0} productos • {new Intl.NumberFormat('es-CO', {
+                            style: 'currency',
+                            currency: 'COP',
+                            minimumFractionDigits: 0
+                          }).format(order.total || 0)}
                         </Typography>
                         
                         {order.notes && (
@@ -620,7 +695,11 @@ const OrdersBoard = () => {
                       
                       <CardContent sx={{ pt: 0 }}>
                         <Typography variant="body2" sx={{ mb: 1 }}>
-                          {order.items.length} productos • ${order.total}
+                          {order.items?.length || order.order_items?.length || 0} productos • {new Intl.NumberFormat('es-CO', {
+                            style: 'currency',
+                            currency: 'COP',
+                            minimumFractionDigits: 0
+                          }).format(order.total || 0)}
                         </Typography>
                         
                         <Box sx={{ mt: 2 }}>
@@ -738,7 +817,11 @@ const OrdersBoard = () => {
                       
                       <CardContent sx={{ pt: 0 }}>
                         <Typography variant="body2" sx={{ mb: 1 }}>
-                          {order.items.length} productos • ${order.total}
+                          {order.items?.length || order.order_items?.length || 0} productos • {new Intl.NumberFormat('es-CO', {
+                            style: 'currency',
+                            currency: 'COP',
+                            minimumFractionDigits: 0
+                          }).format(order.total || 0)}
                         </Typography>
                         
                         {order.customerPhone && (
@@ -772,7 +855,23 @@ const OrdersBoard = () => {
               </Stack>
             </Paper>
           </Grid>
+
+          {/* Mensaje cuando no hay órdenes */}
+          {orders.length === 0 && !loading && (
+            <Grid item xs={12}>
+              <Paper sx={{ p: 4, textAlign: 'center' }}>
+                <Typography variant="h6" color="textSecondary">
+                  No hay pedidos activos
+                </Typography>
+                <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+                  Los nuevos pedidos aparecerán aquí automáticamente
+                </Typography>
+              </Paper>
+            </Grid>
+          )}
         </Grid>
+        </>
+        )}
       </Container>
 
       {/* Modal de detalle del pedido */}

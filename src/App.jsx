@@ -3,7 +3,9 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import theme from './styles/theme';
+import { createAppTheme } from './styles/theme';
+import { useThemeMode } from './hooks/useThemeMode';
+import { ThemeContextProvider } from './contexts/ThemeContext';
 
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Login from './pages/Login';
@@ -23,6 +25,7 @@ import OrdersBoard from './pages/OrdersBoard';
 // Debug component
 import LoginDebug from './components/debug/LoginDebug';
 import BusinessSetup from './components/auth/BusinessSetup';
+import ApiTest from './pages/ApiTest';
 
 // Componente para rutas protegidas
 const ProtectedRoute = ({ children }) => {
@@ -85,11 +88,15 @@ const BusinessRedirect = ({ children }) => {
 };
 
 function App() {
+  const { mode } = useThemeMode();
+  const theme = React.useMemo(() => createAppTheme(mode), [mode]);
+
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <Router>
-        <AuthProvider>
+    <ThemeContextProvider>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <Router>
+          <AuthProvider>
           <Routes>
             <Route 
               path="/login" 
@@ -110,6 +117,10 @@ function App() {
             <Route 
               path="/debug" 
               element={<LoginDebug />} 
+            />
+            <Route 
+              path="/api-test" 
+              element={<ApiTest />} 
             />
             <Route
               element={
@@ -150,9 +161,10 @@ function App() {
             </Route>
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
-        </AuthProvider>
-      </Router>
-    </ThemeProvider>
+          </AuthProvider>
+        </Router>
+      </ThemeProvider>
+    </ThemeContextProvider>
   );
 }
 

@@ -284,6 +284,157 @@ const businessService = {
       throw error;
     }
   },
+
+  // =================== BUSINESS INVITATIONS ===================
+
+  /**
+   * Crea una invitación para unirse al negocio
+   * @param {Object} invitationData - Datos de la invitación {email, role, message}
+   * @returns {Promise<Object>} Invitación creada
+   */
+  async createInvitation(invitationData) {
+    try {
+      console.log('Creando invitación:', invitationData);
+      const response = await api.post('/business/invitations/create/', invitationData);
+      console.log('Invitación creada:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error al crear invitación:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Utiliza una invitación para unirse al negocio
+   * @param {string} invitationCode - Código de la invitación
+   * @returns {Promise<Object>} Resultado de usar la invitación
+   */
+  async useInvitation(invitationCode) {
+    try {
+      console.log(`Usando invitación: ${invitationCode}`);
+      const response = await api.post('/business/invitations/use/', {
+        invitation_code: invitationCode
+      });
+      console.log('Invitación utilizada:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error al usar invitación:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Obtiene lista de invitaciones del negocio
+   * @returns {Promise<Array>} Lista de invitaciones
+   */
+  async getInvitations() {
+    try {
+      console.log('Obteniendo invitaciones...');
+      const response = await api.get('/business/invitations/list/');
+      console.log('Invitaciones obtenidas:', response.data);
+      
+      // Manejar diferentes formatos de respuesta
+      if (Array.isArray(response.data)) {
+        return response.data;
+      } else if (response.data && response.data.results) {
+        return response.data.results;
+      }
+      
+      return response.data || [];
+    } catch (error) {
+      console.error('Error al obtener invitaciones:', error);
+      return [];
+    }
+  },
+
+  // =================== BUSINESS REQUESTS ===================
+
+  /**
+   * Obtiene solicitudes de unión al negocio
+   * @returns {Promise<Array>} Lista de solicitudes
+   */
+  async getBusinessRequests() {
+    try {
+      console.log('Obteniendo solicitudes de negocio...');
+      const response = await api.get('/business/business-requests/');
+      console.log('Solicitudes obtenidas:', response.data);
+      
+      // Manejar diferentes formatos de respuesta
+      if (Array.isArray(response.data)) {
+        return response.data;
+      } else if (response.data && response.data.results) {
+        return response.data.results;
+      }
+      
+      return response.data || [];
+    } catch (error) {
+      console.error('Error al obtener solicitudes:', error);
+      return [];
+    }
+  },
+
+  /**
+   * Aprueba una solicitud de unión al negocio
+   * @param {number} requestId - ID de la solicitud
+   * @returns {Promise<Object>} Resultado de la operación
+   */
+  async approveBusinessRequest(requestId) {
+    try {
+      console.log(`Aprobando solicitud ${requestId}...`);
+      const response = await api.patch(`/business/business-requests/${requestId}/`, {
+        status: 'approved'
+      });
+      console.log('Solicitud aprobada:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error(`Error al aprobar solicitud ${requestId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Rechaza una solicitud de unión al negocio
+   * @param {number} requestId - ID de la solicitud
+   * @param {string} reason - Razón del rechazo (opcional)
+   * @returns {Promise<Object>} Resultado de la operación
+   */
+  async rejectBusinessRequest(requestId, reason = '') {
+    try {
+      console.log(`Rechazando solicitud ${requestId}...`);
+      const updateData = { status: 'rejected' };
+      if (reason) {
+        updateData.rejection_reason = reason;
+      }
+      
+      const response = await api.patch(`/business/business-requests/${requestId}/`, updateData);
+      console.log('Solicitud rechazada:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error(`Error al rechazar solicitud ${requestId}:`, error);
+      throw error;
+    }
+  },
+
+  // =================== BUSINESS JOINING ===================
+
+  /**
+   * Se une directamente a un negocio (diferente de enviar solicitud)
+   * @param {number} businessId - ID del negocio
+   * @returns {Promise<Object>} Resultado de la operación
+   */
+  async joinBusiness(businessId) {
+    try {
+      console.log(`Uniéndose al negocio ${businessId}...`);
+      const response = await api.post('/business/join-business/', {
+        business_id: businessId
+      });
+      console.log('Unión exitosa:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error(`Error al unirse al negocio ${businessId}:`, error);
+      throw error;
+    }
+  },
   
   /**
    * Busca negocios por nombre
@@ -310,6 +461,142 @@ const businessService = {
     } catch (error) {
       console.error('Error al buscar negocios:', error);
       return [];
+    }
+  },
+
+  // =================== USER MANAGEMENT ===================
+
+  /**
+   * Obtiene los usuarios de un negocio
+   * @returns {Promise<Array>} Lista de usuarios del negocio
+   */
+  async getBusinessUsers() {
+    try {
+      console.log('Obteniendo usuarios del negocio...');
+      const response = await api.get('/business/users/');
+      console.log('Usuarios del negocio obtenidos:', response.data);
+      
+      // Manejar diferentes formatos de respuesta
+      if (Array.isArray(response.data)) {
+        return response.data;
+      } else if (response.data && response.data.results) {
+        return response.data.results;
+      }
+      
+      return response.data || [];
+    } catch (error) {
+      console.error('Error al obtener usuarios del negocio:', error);
+      return [];
+    }
+  },
+
+  /**
+   * Obtiene las solicitudes de unión al negocio
+   * @returns {Promise<Array>} Lista de solicitudes pendientes
+   */
+  async getJoinRequests() {
+    try {
+      console.log('Obteniendo solicitudes de unión...');
+      const response = await api.get('/business/join-requests/');
+      console.log('Solicitudes obtenidas:', response.data);
+      
+      // Manejar diferentes formatos de respuesta
+      if (Array.isArray(response.data)) {
+        return response.data;
+      } else if (response.data && response.data.results) {
+        return response.data.results;
+      }
+      
+      return response.data || [];
+    } catch (error) {
+      console.error('Error al obtener solicitudes de unión:', error);
+      return [];
+    }
+  },
+
+  /**
+   * Invita a un usuario al negocio
+   * @param {Object} inviteData - Datos de la invitación {email, role_id, message}
+   * @returns {Promise<Object>} Resultado de la invitación
+   */
+  async inviteUser(inviteData) {
+    try {
+      console.log('Enviando invitación de usuario:', inviteData);
+      const response = await api.post('/business/invite-user/', inviteData);
+      console.log('Invitación enviada:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error al enviar invitación:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Actualiza la información de un usuario del negocio
+   * @param {number} userId - ID del usuario
+   * @param {Object} userData - Datos a actualizar
+   * @returns {Promise<Object>} Usuario actualizado
+   */
+  async updateBusinessUser(userId, userData) {
+    try {
+      console.log(`Actualizando usuario ${userId}:`, userData);
+      const response = await api.patch(`/business/users/${userId}/`, userData);
+      console.log('Usuario actualizado:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error(`Error al actualizar usuario ${userId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Aprueba una solicitud de unión al negocio
+   * @param {number} requestId - ID de la solicitud
+   * @returns {Promise<Object>} Resultado de la operación
+   */
+  async approveJoinRequest(requestId) {
+    try {
+      console.log(`Aprobando solicitud ${requestId}...`);
+      const response = await api.post(`/business/approve-request/${requestId}/`);
+      console.log('Solicitud aprobada:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error(`Error al aprobar solicitud ${requestId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Rechaza una solicitud de unión al negocio
+   * @param {number} requestId - ID de la solicitud
+   * @returns {Promise<Object>} Resultado de la operación
+   */
+  async rejectJoinRequest(requestId) {
+    try {
+      console.log(`Rechazando solicitud ${requestId}...`);
+      const response = await api.post(`/business/reject-request/${requestId}/`);
+      console.log('Solicitud rechazada:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error(`Error al rechazar solicitud ${requestId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Remueve un usuario del negocio
+   * @param {number} userId - ID del usuario
+   * @returns {Promise<Object>} Resultado de la operación
+   */
+  async removeUserFromBusiness(userId) {
+    try {
+      console.log(`Removiendo usuario ${userId} del negocio...`);
+      const response = await api.delete(`/business/users/${userId}/`);
+      console.log('Usuario removido del negocio');
+      return response.data;
+    } catch (error) {
+      console.error(`Error al remover usuario ${userId}:`, error);
+      throw error;
     }
   }
 };

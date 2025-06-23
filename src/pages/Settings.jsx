@@ -48,6 +48,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../hooks/useSettings';
+import { useTheme } from '../contexts/ThemeContext';
 
 // Componente de Tab Panel
 function TabPanel({ children, value, index, ...other }) {
@@ -66,6 +67,7 @@ function TabPanel({ children, value, index, ...other }) {
 
 const Settings = () => {
   useAuth();
+  const { mode, toggleTheme, setThemeMode, isDark } = useTheme();
   const {
     userSettings,
     businessSettings,
@@ -372,14 +374,33 @@ const Settings = () => {
                     <FormControl fullWidth margin="normal">
                       <InputLabel>Tema</InputLabel>
                       <Select
-                        value={userSettings.theme || 'light'}
-                        onChange={(e) => updateUserSettingsLocal({ theme: e.target.value })}
+                        value={mode}
+                        onChange={(e) => {
+                          // Actualizar el tema en el contexto global
+                          if (e.target.value === 'light' || e.target.value === 'dark') {
+                            setThemeMode(e.target.value);
+                          }
+                          // También actualizar en configuraciones locales si existe
+                          if (updateUserSettingsLocal) {
+                            updateUserSettingsLocal({ theme: e.target.value });
+                          }
+                        }}
                       >
                         <MenuItem value="light">Claro</MenuItem>
                         <MenuItem value="dark">Oscuro</MenuItem>
-                        <MenuItem value="auto">Automático</MenuItem>
                       </Select>
                     </FormControl>
+                    
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={isDark}
+                          onChange={toggleTheme}
+                        />
+                      }
+                      label={`Modo ${isDark ? 'oscuro' : 'claro'}`}
+                      sx={{ mt: 2 }}
+                    />
 
                     <FormControl fullWidth margin="normal">
                       <InputLabel>Idioma</InputLabel>

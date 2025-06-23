@@ -1,5 +1,5 @@
 // src/pages/Dashboard.jsx
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -11,6 +11,12 @@ import {
   Paper,
   Chip,
   Button,
+  CircularProgress,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon,
+  Divider,
 } from '@mui/material';
 import {
   AttachMoney as MoneyIcon,
@@ -20,46 +26,108 @@ import {
   TrendingUp as TrendingUpIcon,
   Business as BusinessIcon,
   Badge as BadgeIcon,
-  RssFeed as FeedIcon, // Aquí está el cambio: RssFeed en lugar de Feed
+  RssFeed as FeedIcon,
+  CheckCircle as CheckIcon,
+  Schedule as ScheduleIcon,
+  LocalShipping as ShippingIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
-
-const stats = [
-  {
-    title: 'Ventas del Día',
-    value: '$1,234',
-    icon: <MoneyIcon />,
-    color: '#4CAF50',
-    trend: '+12%',
-  },
-  {
-    title: 'Pedidos',
-    value: '45',
-    icon: <ReceiptIcon />,
-    color: '#2196F3',
-    trend: '+8%',
-  },
-  {
-    title: 'Clientes',
-    value: '32',
-    icon: <PeopleIcon />,
-    color: '#FF9800',
-    trend: '+5%',
-  },
-  {
-    title: 'Productos',
-    value: '128',
-    icon: <InventoryIcon />,
-    color: '#9C27B0',
-    trend: '0%',
-  },
-];
+import ordersService from '../services/orders.service';
+import inventoryService from '../services/inventory.service';
 
 function Dashboard() {
   const navigate = useNavigate();
   const { user, getUserBusiness, getUserRole } = useAuth();
   const businessInfo = getUserBusiness();
   const roleInfo = getUserRole();
+  
+  // Estados para datos del dashboard
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    totalOrders: 0,
+    totalRevenue: 0,
+    pendingOrders: 0,
+    totalProducts: 0,
+    recentOrders: [],
+    lowStockProducts: []
+  });
+
+  // Cargar datos del dashboard
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      try {
+        setLoading(true);
+        
+        // Cargar estadísticas de órdenes
+        const orderStats = await ordersService.getOrderStatistics();
+        
+        // Cargar órdenes recientes (últimas 5)
+        const recentOrders = await ordersService.getTodayOrders();
+        
+        // Cargar productos con stock bajo
+        const lowStockProducts = await inventoryService.getLowStockProducts();
+        
+        // Cargar total de productos
+        const allProducts = await inventoryService.getProducts();
+        
+        setStats({
+          totalOrders: orderStats.total_orders || 0,
+          totalRevenue: orderStats.total_revenue || 0,
+          pendingOrders: orderStats.pending_orders || 0,
+          totalProducts: allProducts.length || 0,
+          recentOrders: recentOrders.slice(0, 5) || [],
+          lowStockProducts: lowStockProducts.slice(0, 5) || []
+        });
+        
+      } catch (error) {
+        console.error('Error loading dashboard data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (user && businessInfo) {
+      loadDashboardData();
+    }
+  }, [user, businessInfo]);
+
+  // Formatear moneda
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('es-CO', {
+      style: 'currency',
+      currency: 'COP',
+      minimumFractionDigits: 0
+    }).format(amount);
+  };
+
+  // Obtener color del estado de la orden
+  const getOrderStatusColor = (status) => {
+    const colors = {
+      pending: '#ff9800',
+      confirmed: '#2196f3',
+      preparing: '#9c27b0',
+      ready: '#4caf50',
+      delivered: '#8bc34a',
+      cancelled: '#f44336'
+    };
+    return colors[status] || '#757575';
+  };
+
+  // Obtener icono del estado de la orden
+  const getOrderStatusIcon = (status) => {
+    switch (status) {
+      case 'pending':
+        return <ScheduleIcon />;
+      case 'confirmed':
+      case 'preparing':
+        return <CheckIcon />;
+      case 'ready':
+      case 'delivered':
+        return <ShippingIcon />;
+      default:
+        return <ReceiptIcon />;
+    }
+  };
 
   return (
     <Box>
@@ -100,80 +168,237 @@ function Dashboard() {
         </Box>
       </Paper>
       
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        {stats.map((stat) => (
-          <Grid item xs={12} sm={6} md={3} key={stat.title}>
-            <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <Box>
-                    <Typography color="textSecondary" gutterBottom variant="body2">
-                      {stat.title}
-                    </Typography>
-                    <Typography variant="h4" component="div">
-                      {stat.value}
-                    </Typography>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                      <TrendingUpIcon 
-                        sx={{ 
-                          fontSize: 16, 
-                          color: stat.trend.startsWith('+') ? '#4CAF50' : '#F44336',
-                          mr: 0.5 
-                        }} 
-                      />
-                      <Typography 
-                        variant="caption" 
-                        sx={{ 
-                          color: stat.trend.startsWith('+') ? '#4CAF50' : '#F44336' 
-                        }}
-                      >
-                        {stat.trend} vs ayer
+      {loading ? (
+        <Box display="flex" justifyContent="center" alignItems="center" minHeight="300px">
+          <CircularProgress size={50} />
+          <Typography variant="h6" sx={{ ml: 2 }}>
+            Cargando datos del dashboard...
+          </Typography>
+        </Box>
+      ) : (
+        <>
+          <Grid container spacing={3} sx={{ mb: 4 }}>
+            {/* Ventas del Día */}
+            <Grid item xs={12} sm={6} md={3}>
+              <Card>
+                <CardContent>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <Box>
+                      <Typography color="textSecondary" gutterBottom variant="body2">
+                        Ventas del Día
+                      </Typography>
+                      <Typography variant="h4" component="div">
+                        {formatCurrency(stats.totalRevenue)}
+                      </Typography>
+                      <Typography variant="caption" color="textSecondary">
+                        Ingresos totales
                       </Typography>
                     </Box>
+                    <Avatar sx={{ bgcolor: '#4CAF5020', color: '#4CAF50', width: 56, height: 56 }}>
+                      <MoneyIcon />
+                    </Avatar>
                   </Box>
-                  <Avatar 
-                    sx={{ 
-                      bgcolor: stat.color + '20', 
-                      color: stat.color,
-                      width: 56, 
-                      height: 56 
-                    }}
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Total de Pedidos */}
+            <Grid item xs={12} sm={6} md={3}>
+              <Card>
+                <CardContent>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <Box>
+                      <Typography color="textSecondary" gutterBottom variant="body2">
+                        Total Pedidos
+                      </Typography>
+                      <Typography variant="h4" component="div">
+                        {stats.totalOrders}
+                      </Typography>
+                      <Typography variant="caption" color="textSecondary">
+                        Pedidos totales
+                      </Typography>
+                    </Box>
+                    <Avatar sx={{ bgcolor: '#2196F320', color: '#2196F3', width: 56, height: 56 }}>
+                      <ReceiptIcon />
+                    </Avatar>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Pedidos Pendientes */}
+            <Grid item xs={12} sm={6} md={3}>
+              <Card>
+                <CardContent>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <Box>
+                      <Typography color="textSecondary" gutterBottom variant="body2">
+                        Pedidos Pendientes
+                      </Typography>
+                      <Typography variant="h4" component="div">
+                        {stats.pendingOrders}
+                      </Typography>
+                      <Typography variant="caption" color="textSecondary">
+                        Requieren atención
+                      </Typography>
+                    </Box>
+                    <Avatar sx={{ bgcolor: '#FF980020', color: '#FF9800', width: 56, height: 56 }}>
+                      <ScheduleIcon />
+                    </Avatar>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Total de Productos */}
+            <Grid item xs={12} sm={6} md={3}>
+              <Card>
+                <CardContent>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <Box>
+                      <Typography color="textSecondary" gutterBottom variant="body2">
+                        Productos
+                      </Typography>
+                      <Typography variant="h4" component="div">
+                        {stats.totalProducts}
+                      </Typography>
+                      <Typography variant="caption" color="textSecondary">
+                        En inventario
+                      </Typography>
+                    </Box>
+                    <Avatar sx={{ bgcolor: '#9C27B020', color: '#9C27B0', width: 56, height: 56 }}>
+                      <InventoryIcon />
+                    </Avatar>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+        </>
+      )}
+
+      {!loading && (
+        <Grid container spacing={3}>
+          {/* Pedidos Recientes */}
+          <Grid item xs={12} md={8}>
+            <Card>
+              <CardContent>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                  <Typography variant="h6">
+                    Pedidos Recientes
+                  </Typography>
+                  <Button 
+                    variant="outlined" 
+                    size="small"
+                    onClick={() => navigate('/orders')}
                   >
-                    {stat.icon}
-                  </Avatar>
+                    Ver Todos
+                  </Button>
                 </Box>
+                
+                {stats.recentOrders.length > 0 ? (
+                  <List>
+                    {stats.recentOrders.map((order, index) => (
+                      <React.Fragment key={order.id}>
+                        <ListItem>
+                          <ListItemIcon>
+                            <Avatar 
+                              sx={{ 
+                                bgcolor: getOrderStatusColor(order.status) + '20',
+                                color: getOrderStatusColor(order.status),
+                                width: 40, 
+                                height: 40 
+                              }}
+                            >
+                              {getOrderStatusIcon(order.status)}
+                            </Avatar>
+                          </ListItemIcon>
+                          <ListItemText
+                            primary={`Pedido #${order.id}`}
+                            secondary={
+                              <Box>
+                                <Typography variant="body2" color="textSecondary">
+                                  Cliente: {order.customer_name || order.customer || 'N/A'}
+                                </Typography>
+                                <Typography variant="body2" color="textSecondary">
+                                  Total: {formatCurrency(order.total || 0)}
+                                </Typography>
+                                <Chip 
+                                  label={order.status || 'pending'} 
+                                  size="small" 
+                                  sx={{ 
+                                    bgcolor: getOrderStatusColor(order.status) + '20',
+                                    color: getOrderStatusColor(order.status),
+                                    mt: 1
+                                  }}
+                                />
+                              </Box>
+                            }
+                          />
+                        </ListItem>
+                        {index < stats.recentOrders.length - 1 && <Divider />}
+                      </React.Fragment>
+                    ))}
+                  </List>
+                ) : (
+                  <Typography color="textSecondary" textAlign="center" sx={{ py: 4 }}>
+                    No hay pedidos recientes
+                  </Typography>
+                )}
               </CardContent>
             </Card>
           </Grid>
-        ))}
-      </Grid>
 
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={8}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Pedidos Recientes
-              </Typography>
-              <Typography color="textSecondary">
-                Aquí irá la lista de pedidos recientes...
-              </Typography>
-            </CardContent>
-          </Card>
+          {/* Productos con Stock Bajo */}
+          <Grid item xs={12} md={4}>
+            <Card>
+              <CardContent>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                  <Typography variant="h6">
+                    Stock Bajo
+                  </Typography>
+                  <Button 
+                    variant="outlined" 
+                    size="small"
+                    onClick={() => navigate('/inventory')}
+                  >
+                    Ver Inventario
+                  </Button>
+                </Box>
+                
+                {stats.lowStockProducts.length > 0 ? (
+                  <List>
+                    {stats.lowStockProducts.map((product, index) => (
+                      <React.Fragment key={product.id}>
+                        <ListItem>
+                          <ListItemIcon>
+                            <Avatar sx={{ bgcolor: '#f44336', color: 'white', width: 32, height: 32 }}>
+                              <InventoryIcon fontSize="small" />
+                            </Avatar>
+                          </ListItemIcon>
+                          <ListItemText
+                            primary={product.name}
+                            secondary={
+                              <Typography variant="body2" color="error">
+                                Stock: {product.stock || 0}
+                              </Typography>
+                            }
+                          />
+                        </ListItem>
+                        {index < stats.lowStockProducts.length - 1 && <Divider />}
+                      </React.Fragment>
+                    ))}
+                  </List>
+                ) : (
+                  <Typography color="textSecondary" textAlign="center" sx={{ py: 4 }}>
+                    ✅ Todos los productos tienen stock suficiente
+                  </Typography>
+                )}
+              </CardContent>
+            </Card>
+          </Grid>
         </Grid>
-        <Grid item xs={12} md={4}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Productos Más Vendidos
-              </Typography>
-              <Typography color="textSecondary">
-                Aquí irá la lista de productos más vendidos...
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+      )}
       
       {/* Información de permisos del usuario (útil para desarrollo) */}
       {roleInfo && roleInfo.permissions && (
