@@ -221,22 +221,9 @@ function MainLayout() {
     return hasPermission(item.permission);
   };
 
-  // Función para obtener el badge de notificación (ejemplo para usuarios pendientes)
-  const getNotificationBadge = (itemPath) => {
-    if (itemPath === '/users' && hasPermission('can_manage_users')) {
-      // Aquí podrías obtener el número real de solicitudes pendientes
-      const pendingRequests = 2; // Mock data
-      if (pendingRequests > 0) {
-        return (
-          <Chip 
-            label={pendingRequests} 
-            size="small" 
-            color="error" 
-            sx={{ ml: 1, minWidth: 20, height: 20 }}
-          />
-        );
-      }
-    }
+  // Función para obtener el badge de notificación
+  const getNotificationBadge = () => {
+    // TODO: Implementar conteo real de notificaciones desde el backend
     return null;
   };
 
@@ -353,7 +340,7 @@ function MainLayout() {
                       </Typography>
                     )}
                   </Box>
-                  {getNotificationBadge(item.path)}
+                  {getNotificationBadge()}
                 </Box>
               </ListItemButton>
             </ListItem>

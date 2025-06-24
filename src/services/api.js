@@ -38,6 +38,16 @@ api.interceptors.response.use(
   async (error) => {
     console.error('API Response Error:', error.response || error);
     
+    // Log detailed error information for debugging
+    if (error.response) {
+      console.error('Error Status:', error.response.status);
+      console.error('Error Data:', error.response.data);
+      console.error('Error Headers:', error.response.headers);
+      console.error('Request URL:', error.config?.url);
+      console.error('Request Method:', error.config?.method);
+      console.error('Request Data:', error.config?.data);
+    }
+    
     // Si no hay respuesta del servidor
     if (!error.response) {
       console.error('No server response, possibly a network error');

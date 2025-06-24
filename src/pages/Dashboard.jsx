@@ -179,7 +179,7 @@ function Dashboard() {
         <>
           <Grid container spacing={3} sx={{ mb: 4 }}>
             {/* Ventas del Día */}
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid xs={12} sm={6} md={3}>
               <Card>
                 <CardContent>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -203,7 +203,7 @@ function Dashboard() {
             </Grid>
 
             {/* Total de Pedidos */}
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid xs={12} sm={6} md={3}>
               <Card>
                 <CardContent>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -227,7 +227,7 @@ function Dashboard() {
             </Grid>
 
             {/* Pedidos Pendientes */}
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid xs={12} sm={6} md={3}>
               <Card>
                 <CardContent>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -251,7 +251,7 @@ function Dashboard() {
             </Grid>
 
             {/* Total de Productos */}
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid xs={12} sm={6} md={3}>
               <Card>
                 <CardContent>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -280,7 +280,7 @@ function Dashboard() {
       {!loading && (
         <Grid container spacing={3}>
           {/* Pedidos Recientes */}
-          <Grid item xs={12} md={8}>
+          <Grid xs={12} md={8}>
             <Card>
               <CardContent>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -350,7 +350,7 @@ function Dashboard() {
           </Grid>
 
           {/* Productos con Stock Bajo */}
-          <Grid item xs={12} md={4}>
+          <Grid xs={12} md={4}>
             <Card>
               <CardContent>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -408,7 +408,7 @@ function Dashboard() {
           </Typography>
           <Grid container spacing={2}>
             {Object.entries(roleInfo.permissions).map(([permission, hasPermission]) => (
-              <Grid item xs={12} sm={6} md={4} key={permission}>
+              <Grid xs={12} sm={6} md={4} key={permission}>
                 <Chip
                   label={permission.replace('can_', '').replace(/_/g, ' ')}
                   color={hasPermission ? "success" : "default"}

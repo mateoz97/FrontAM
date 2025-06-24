@@ -6,7 +6,7 @@ import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   IconButton, Chip, Avatar, Fab, Alert, Snackbar, MenuItem,
   Select, FormControl, InputLabel, Tooltip, Badge, Stack,
-  TablePagination, InputAdornment, Tabs, Tab, useTheme, alpha,
+  TablePagination, InputAdornment, Tabs, Tab, useTheme,
   CircularProgress, CardHeader, CardActions
 } from '@mui/material';
 import {
@@ -34,7 +34,7 @@ function TabPanel({ children, value, index, ...other }) {
 }
 
 const Inventory = () => {
-  const { getUserBusiness, hasPermission } = useAuth();
+  const { getUserBusiness, hasPermission, activeBusinessId } = useAuth();
   const theme = useTheme();
   const businessInfo = getUserBusiness();
 
@@ -211,13 +211,18 @@ const Inventory = () => {
   // Funciones CRUD para productos
   const handleCreateProduct = async () => {
     try {
-      const newProduct = await inventoryService.createProduct({
+      const productDataWithBusiness = {
         ...productForm,
         price: parseFloat(productForm.price) || 0,
         stock: parseInt(productForm.stock) || 0,
         min_stock: parseInt(productForm.min_stock) || 0,
-        cost: parseFloat(productForm.cost) || 0
-      });
+        cost: parseFloat(productForm.cost) || 0,
+        business: activeBusinessId || businessInfo?.id
+      };
+
+      console.log('Creating product with business context:', productDataWithBusiness);
+
+      const newProduct = await inventoryService.createProduct(productDataWithBusiness);
 
       setProducts(prev => [newProduct, ...prev]);
       setAddProductModal(false);
@@ -226,6 +231,8 @@ const Inventory = () => {
       
     } catch (error) {
       console.error('Error creating product:', error);
+      console.error('activeBusinessId:', activeBusinessId);
+      console.error('Business info:', businessInfo);
       setSnackbar({ open: true, message: 'Error al crear el producto', severity: 'error' });
     }
   };
@@ -273,8 +280,11 @@ const Inventory = () => {
         product: selectedProduct.id,
         movement_type: stockForm.type,
         quantity: parseInt(stockForm.quantity),
-        reason: stockForm.reason
+        reason: stockForm.reason,
+        business: activeBusinessId || businessInfo?.id
       };
+
+      console.log('Creating stock movement with business context:', movement);
 
       await inventoryService.createStockMovement(movement);
 
@@ -312,7 +322,33 @@ const Inventory = () => {
   // Funciones para categorías
   const handleCreateCategory = async () => {
     try {
-      const newCategory = await inventoryService.createCategory(categoryForm);
+      // Debug: verificar tanto businessInfo como activeBusinessId
+      console.log('DEBUG - businessInfo completo:', businessInfo);
+      console.log('DEBUG - activeBusinessId:', activeBusinessId);
+      
+      // Usar activeBusinessId como fuente principal
+      const businessId = activeBusinessId || businessInfo?.id;
+      
+      if (!businessId) {
+        console.error('PROBLEMA: No se pudo obtener el business ID');
+        console.error('activeBusinessId:', activeBusinessId);
+        console.error('businessInfo:', businessInfo);
+        setSnackbar({ 
+          open: true, 
+          message: 'Error: No se pudo identificar el negocio. Intenta refrescar la página.', 
+          severity: 'error' 
+        });
+        return;
+      }
+      
+      const categoryDataWithBusiness = {
+        ...categoryForm,
+        business: businessId
+      };
+      
+      console.log('Creating category with business context:', categoryDataWithBusiness);
+      
+      const newCategory = await inventoryService.createCategory(categoryDataWithBusiness);
       setCategories(prev => [...prev, newCategory]);
       setAddCategoryModal(false);
       setCategoryForm({ name: '', description: '' });
@@ -320,6 +356,8 @@ const Inventory = () => {
       
     } catch (error) {
       console.error('Error creating category:', error);
+      console.error('activeBusinessId:', activeBusinessId);
+      console.error('Business info:', businessInfo);
       setSnackbar({ open: true, message: 'Error al crear la categoría', severity: 'error' });
     }
   };
@@ -423,7 +461,7 @@ const Inventory = () => {
           sx={{ borderBottom: 1, borderColor: 'divider' }}
         >
           <Tab icon={<Inventory2 />} label="Productos" />
-          <Tab icon={<Analytics />} label="Movimientos" />
+          {/* <Tab icon={<Analytics />} label="Movimientos" /> */}
           <Tab icon={<Category />} label="Categorías" />
         </Tabs>
 
@@ -603,7 +641,8 @@ const Inventory = () => {
           )}
         </TabPanel>
 
-        {/* Tab Panel: Movimientos de Stock */}
+        {/* Tab Panel: Movimientos de Stock - Comentado para futuras implementaciones */}
+        {/*
         <TabPanel value={tabValue} index={1}>
           {stockMovements.length === 0 ? (
             <Paper sx={{ p: 4, textAlign: 'center' }}>
@@ -648,12 +687,13 @@ const Inventory = () => {
             </TableContainer>
           )}
         </TabPanel>
+        */}
 
         {/* Tab Panel: Categorías */}
-        <TabPanel value={tabValue} index={2}>
+        <TabPanel value={tabValue} index={1}>
           <Grid container spacing={2}>
             {categories.filter(cat => cat.id !== '').map((category) => (
-              <Grid item xs={12} sm={6} md={4} key={category.id}>
+              <Grid xs={12} sm={6} md={4} key={category.id}>
                 <Card>
                   <CardContent>
                     <Typography variant="h6" gutterBottom>
@@ -680,7 +720,7 @@ const Inventory = () => {
         <DialogTitle>Agregar Nuevo Producto</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12} sm={6}>
+            <Grid xs={12} sm={6}>
               <TextField
                 fullWidth
                 label="Nombre del producto"
@@ -688,7 +728,7 @@ const Inventory = () => {
                 onChange={(e) => handleProductFormChange('name', e.target.value)}
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid xs={12} sm={6}>
               <FormControl fullWidth>
                 <InputLabel>Categoría</InputLabel>
                 <Select
@@ -704,7 +744,7 @@ const Inventory = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid xs={12} sm={4}>
               <TextField
                 fullWidth
                 label="Precio"
@@ -716,7 +756,7 @@ const Inventory = () => {
                 }}
               />
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid xs={12} sm={4}>
               <TextField
                 fullWidth
                 label="Stock inicial"
@@ -725,7 +765,7 @@ const Inventory = () => {
                 onChange={(e) => handleProductFormChange('stock', e.target.value)}
               />
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid xs={12} sm={4}>
               <TextField
                 fullWidth
                 label="Stock mínimo"
@@ -734,7 +774,7 @@ const Inventory = () => {
                 onChange={(e) => handleProductFormChange('min_stock', e.target.value)}
               />
             </Grid>
-            <Grid item xs={12}>
+            <Grid xs={12}>
               <TextField
                 fullWidth
                 label="Descripción"
@@ -759,7 +799,7 @@ const Inventory = () => {
         <DialogTitle>Editar Producto</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12} sm={6}>
+            <Grid xs={12} sm={6}>
               <TextField
                 fullWidth
                 label="Nombre del producto"
@@ -767,7 +807,7 @@ const Inventory = () => {
                 onChange={(e) => handleProductFormChange('name', e.target.value)}
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid xs={12} sm={6}>
               <FormControl fullWidth>
                 <InputLabel>Categoría</InputLabel>
                 <Select
@@ -783,7 +823,7 @@ const Inventory = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid xs={12} sm={4}>
               <TextField
                 fullWidth
                 label="Precio"
@@ -795,7 +835,7 @@ const Inventory = () => {
                 }}
               />
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid xs={12} sm={4}>
               <TextField
                 fullWidth
                 label="Stock actual"
@@ -804,7 +844,7 @@ const Inventory = () => {
                 onChange={(e) => handleProductFormChange('stock', e.target.value)}
               />
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid xs={12} sm={4}>
               <TextField
                 fullWidth
                 label="Stock mínimo"
@@ -813,7 +853,7 @@ const Inventory = () => {
                 onChange={(e) => handleProductFormChange('min_stock', e.target.value)}
               />
             </Grid>
-            <Grid item xs={12}>
+            <Grid xs={12}>
               <TextField
                 fullWidth
                 label="Descripción"

@@ -162,7 +162,7 @@ const UserProfile = () => {
 
         {/* Profile Form */}
         <Grid container spacing={3}>
-          <Grid item xs={12} sm={6}>
+          <Grid xs={12} sm={6}>
             <TextField
               fullWidth
               label="Nombre"
@@ -174,7 +174,7 @@ const UserProfile = () => {
               margin="normal"
             />
           </Grid>
-          <Grid item xs={12} sm={6}>
+          <Grid xs={12} sm={6}>
             <TextField
               fullWidth
               label="Apellido"
@@ -186,7 +186,7 @@ const UserProfile = () => {
               margin="normal"
             />
           </Grid>
-          <Grid item xs={12} sm={6}>
+          <Grid xs={12} sm={6}>
             <TextField
               fullWidth
               label="Nombre de usuario"
@@ -197,7 +197,7 @@ const UserProfile = () => {
               margin="normal"
             />
           </Grid>
-          <Grid item xs={12} sm={6}>
+          <Grid xs={12} sm={6}>
             <TextField
               fullWidth
               label="Correo electrónico"
@@ -210,7 +210,7 @@ const UserProfile = () => {
               margin="normal"
             />
           </Grid>
-          <Grid item xs={12} sm={6}>
+          <Grid xs={12} sm={6}>
             <TextField
               fullWidth
               label="Teléfono"
@@ -222,7 +222,7 @@ const UserProfile = () => {
               margin="normal"
             />
           </Grid>
-          <Grid item xs={12} sm={6}>
+          <Grid xs={12} sm={6}>
             <TextField
               fullWidth
               label="Dirección"
@@ -257,7 +257,7 @@ const UserProfile = () => {
           Estadísticas de Usuario
         </Typography>
         <Grid container spacing={3}>
-          <Grid item xs={12} sm={4}>
+          <Grid xs={12} sm={4}>
             <Box sx={{ textAlign: 'center', p: 2 }}>
               <Typography variant="h4" color="primary.main">
                 {user.posts_count || 0}
@@ -267,7 +267,7 @@ const UserProfile = () => {
               </Typography>
             </Box>
           </Grid>
-          <Grid item xs={12} sm={4}>
+          <Grid xs={12} sm={4}>
             <Box sx={{ textAlign: 'center', p: 2 }}>
               <Typography variant="h4" color="primary.main">
                 {user.orders_count || 0}
@@ -277,7 +277,7 @@ const UserProfile = () => {
               </Typography>
             </Box>
           </Grid>
-          <Grid item xs={12} sm={4}>
+          <Grid xs={12} sm={4}>
             <Box sx={{ textAlign: 'center', p: 2 }}>
               <Typography variant="h4" color="primary.main">
                 {user.days_active || 0}

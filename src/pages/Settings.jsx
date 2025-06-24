@@ -356,7 +356,7 @@ const Settings = () => {
         <TabPanel value={tabValue} index={0}>
           {userSettings ? (
             <Grid container spacing={3}>
-              <Grid item xs={12} md={6}>
+              <Grid xs={12} md={6}>
                 <Card>
                   <CardHeader 
                     title="Apariencia" 
@@ -426,7 +426,7 @@ const Settings = () => {
                 </Card>
               </Grid>
 
-              <Grid item xs={12} md={6}>
+              <Grid xs={12} md={6}>
                 <Card>
                   <CardHeader title="Preferencias" />
                   <CardContent>
@@ -485,7 +485,7 @@ const Settings = () => {
                 </Card>
               </Grid>
 
-              <Grid item xs={12}>
+              <Grid xs={12}>
                 <Box display="flex" justifyContent="flex-end" gap={2}>
                   <Button
                     variant="contained"
@@ -506,7 +506,7 @@ const Settings = () => {
         <TabPanel value={tabValue} index={1}>
           {businessSettings ? (
             <Grid container spacing={3}>
-              <Grid item xs={12} md={6}>
+              <Grid xs={12} md={6}>
                 <Card>
                   <CardHeader 
                     title="Información del Negocio"
@@ -556,7 +556,7 @@ const Settings = () => {
                 </Card>
               </Grid>
 
-              <Grid item xs={12} md={6}>
+              <Grid xs={12} md={6}>
                 <Card>
                   <CardHeader title="Configuraciones Operativas" />
                   <CardContent>
@@ -625,7 +625,7 @@ const Settings = () => {
                 </Card>
               </Grid>
 
-              <Grid item xs={12}>
+              <Grid xs={12}>
                 <Box display="flex" justifyContent="flex-end" gap={2}>
                   <Button
                     variant="contained"
@@ -733,7 +733,7 @@ const Settings = () => {
                     Resumen de Configuraciones
                   </Typography>
                   <Grid container spacing={2}>
-                    <Grid item xs={6} md={3}>
+                    <Grid xs={6} md={3}>
                       <Card variant="outlined">
                         <CardContent>
                           <Typography variant="h6" color="primary">
@@ -745,7 +745,7 @@ const Settings = () => {
                         </CardContent>
                       </Card>
                     </Grid>
-                    <Grid item xs={6} md={3}>
+                    <Grid xs={6} md={3}>
                       <Card variant="outlined">
                         <CardContent>
                           <Typography variant="h6" color="primary">
@@ -757,7 +757,7 @@ const Settings = () => {
                         </CardContent>
                       </Card>
                     </Grid>
-                    <Grid item xs={6} md={3}>
+                    <Grid xs={6} md={3}>
                       <Card variant="outlined">
                         <CardContent>
                           <Typography variant="h6" color="primary">
@@ -769,7 +769,7 @@ const Settings = () => {
                         </CardContent>
                       </Card>
                     </Grid>
-                    <Grid item xs={6} md={3}>
+                    <Grid xs={6} md={3}>
                       <Card variant="outlined">
                         <CardContent>
                           <Typography variant="h6" color="primary">
@@ -791,7 +791,7 @@ const Settings = () => {
         {/* Tab Panel 5: Respaldo y Restauración */}
         <TabPanel value={tabValue} index={4}>
           <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
+            <Grid xs={12} md={6}>
               <Card>
                 <CardHeader title="Exportar Configuraciones" />
                 <CardContent>
@@ -810,7 +810,7 @@ const Settings = () => {
               </Card>
             </Grid>
 
-            <Grid item xs={12} md={6}>
+            <Grid xs={12} md={6}>
               <Card>
                 <CardHeader title="Restaurar Configuraciones" />
                 <CardContent>

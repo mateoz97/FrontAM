@@ -435,7 +435,7 @@ const AdminUsers = () => {
 
         {/* Estadísticas rápidas */}
         <Grid container spacing={3} sx={{ mb: 3 }}>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid xs={12} sm={6} md={3}>
             <Card>
               <CardContent sx={{ textAlign: 'center' }}>
                 <Avatar sx={{ bgcolor: 'primary.main', mx: 'auto', mb: 2 }}>
@@ -451,7 +451,7 @@ const AdminUsers = () => {
             </Card>
           </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid xs={12} sm={6} md={3}>
             <Card>
               <CardContent sx={{ textAlign: 'center' }}>
                 <Avatar sx={{ bgcolor: 'success.main', mx: 'auto', mb: 2 }}>
@@ -467,7 +467,7 @@ const AdminUsers = () => {
             </Card>
           </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid xs={12} sm={6} md={3}>
             <Card>
               <CardContent sx={{ textAlign: 'center' }}>
                 <Avatar sx={{ bgcolor: 'warning.main', mx: 'auto', mb: 2 }}>
@@ -483,7 +483,7 @@ const AdminUsers = () => {
             </Card>
           </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid xs={12} sm={6} md={3}>
             <Card>
               <CardContent sx={{ textAlign: 'center' }}>
                 <Badge badgeContent={totalRequests} color="error">
@@ -841,7 +841,7 @@ const AdminUsers = () => {
               }
 
               return (
-                <Grid item xs={12} sm={6} md={4} key={role.id}>
+                <Grid xs={12} sm={6} md={4} key={role.id}>
                   <Card>
                     <CardContent>
                       <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -964,7 +964,7 @@ const AdminUsers = () => {
         <DialogTitle>Editar Usuario</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12} sm={6}>
+            <Grid xs={12} sm={6}>
               <TextField
                 fullWidth
                 label="Nombre"
@@ -972,7 +972,7 @@ const AdminUsers = () => {
                 onChange={(e) => setUserForm({ ...userForm, firstName: e.target.value })}
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid xs={12} sm={6}>
               <TextField
                 fullWidth
                 label="Apellido"
@@ -980,7 +980,7 @@ const AdminUsers = () => {
                 onChange={(e) => setUserForm({ ...userForm, lastName: e.target.value })}
               />
             </Grid>
-            <Grid item xs={12}>
+            <Grid xs={12}>
               <TextField
                 fullWidth
                 label="Correo electrónico"
@@ -989,7 +989,7 @@ const AdminUsers = () => {
                 onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid xs={12} sm={6}>
               <TextField
                 fullWidth
                 label="Teléfono"
@@ -997,7 +997,7 @@ const AdminUsers = () => {
                 onChange={(e) => setUserForm({ ...userForm, phone: e.target.value })}
               />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid xs={12} sm={6}>
               <FormControl fullWidth>
                 <InputLabel>Estado</InputLabel>
                 <Select

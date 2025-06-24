@@ -25,7 +25,6 @@ import OrdersBoard from './pages/OrdersBoard';
 // Debug component
 import LoginDebug from './components/debug/LoginDebug';
 import BusinessSetup from './components/auth/BusinessSetup';
-import ApiTest from './pages/ApiTest';
 
 // Componente para rutas protegidas
 const ProtectedRoute = ({ children }) => {
@@ -117,10 +116,6 @@ function App() {
             <Route 
               path="/debug" 
               element={<LoginDebug />} 
-            />
-            <Route 
-              path="/api-test" 
-              element={<ApiTest />} 
             />
             <Route
               element={

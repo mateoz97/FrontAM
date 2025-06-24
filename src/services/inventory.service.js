@@ -58,6 +58,7 @@ const inventoryService = {
       return response.data;
     } catch (error) {
       console.error('Error al crear producto:', error);
+      console.error('Error details:', error.response?.data);
       throw error;
     }
   },
@@ -131,11 +132,21 @@ const inventoryService = {
   async createCategory(categoryData) {
     try {
       console.log('Creando categoría:', categoryData);
-      const response = await api.post('/inventory/categories/', categoryData);
+      
+      // El backend puede requerir el business ID automáticamente via contexto/token
+      // o podemos incluirlo explícitamente aquí si es necesario
+      const dataToSend = {
+        ...categoryData
+        // No agregamos business_id aquí porque debería ser manejado por el backend
+        // basado en el contexto del usuario/token
+      };
+      
+      const response = await api.post('/inventory/categories/', dataToSend);
       console.log('Categoría creada:', response.data);
       return response.data;
     } catch (error) {
       console.error('Error al crear categoría:', error);
+      console.error('Error details:', error.response?.data);
       throw error;
     }
   },
@@ -217,6 +228,7 @@ const inventoryService = {
       return response.data;
     } catch (error) {
       console.error('Error al crear movimiento de stock:', error);
+      console.error('Error details:', error.response?.data);
       throw error;
     }
   },

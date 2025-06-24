@@ -227,7 +227,7 @@ const BusinessProfile = () => {
           {/* Information Tab */}
           {tabValue === 0 && (
             <Grid container spacing={3}>
-              <Grid item xs={12} sm={6}>
+              <Grid xs={12} sm={6}>
                 <TextField
                   fullWidth
                   label="Nombre del Negocio"
@@ -239,7 +239,7 @@ const BusinessProfile = () => {
                   margin="normal"
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid xs={12} sm={6}>
                 <TextField
                   fullWidth
                   label="Dirección"
@@ -251,7 +251,7 @@ const BusinessProfile = () => {
                   margin="normal"
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid xs={12} sm={6}>
                 <TextField
                   fullWidth
                   label="Teléfono"
@@ -263,7 +263,7 @@ const BusinessProfile = () => {
                   margin="normal"
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid xs={12} sm={6}>
                 <TextField
                   fullWidth
                   label="Correo electrónico"
@@ -276,7 +276,7 @@ const BusinessProfile = () => {
                   margin="normal"
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid xs={12} sm={6}>
                 <TextField
                   fullWidth
                   label="Sitio web"
@@ -288,7 +288,7 @@ const BusinessProfile = () => {
                   margin="normal"
                 />
               </Grid>
-              <Grid item xs={12}>
+              <Grid xs={12}>
                 <TextField
                   fullWidth
                   label="Descripción"
@@ -308,7 +308,7 @@ const BusinessProfile = () => {
           {/* Statistics Tab */}
           {tabValue === 1 && (
             <Grid container spacing={3}>
-              <Grid item xs={12} md={4}>
+              <Grid xs={12} md={4}>
                 <Card>
                   <CardContent>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -326,7 +326,7 @@ const BusinessProfile = () => {
                   </CardContent>
                 </Card>
               </Grid>
-              <Grid item xs={12} md={4}>
+              <Grid xs={12} md={4}>
                 <Card>
                   <CardContent>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -344,7 +344,7 @@ const BusinessProfile = () => {
                   </CardContent>
                 </Card>
               </Grid>
-              <Grid item xs={12} md={4}>
+              <Grid xs={12} md={4}>
                 <Card>
                   <CardContent>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -362,7 +362,7 @@ const BusinessProfile = () => {
                   </CardContent>
                 </Card>
               </Grid>
-              <Grid item xs={12}>
+              <Grid xs={12}>
                 <Paper sx={{ p: 3, mt: 2 }}>
                   <Typography variant="h6" gutterBottom>
                     Ventas de los Últimos 6 Meses

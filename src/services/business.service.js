@@ -125,12 +125,12 @@ const businessService = {
         try {
           // Formato 1: Solo el número
           response = await api.post('/business/switch-business/', parseInt(businessId));
-        } catch (error1) {
+        } catch {
           console.log('Formato 1 falló, intentando formato 2...');
           try {
             // Formato 2: Objeto con business_id
             response = await api.post('/business/switch-business/', { business_id: parseInt(businessId) });
-          } catch (error2) {
+          } catch {
             console.log('Formato 2 falló, intentando formato 3...');
             // Formato 3: Objeto con id
             response = await api.post('/business/switch-business/', { id: parseInt(businessId) });
