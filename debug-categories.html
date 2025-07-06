@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Categories</title>
+</head>
+<body>
+    <h1>Debug Categories API Test</h1>
+    <button onclick="testCategoriesAPI()">Test Categories API</button>
+    <button onclick="testCreateProduct()">Test Create Product</button>
+    <div id="results"></div>
+
+    <script>
+        async function testCategoriesAPI() {
+            try {
+                const token = localStorage.getItem('token');
+                console.log('Token found:', !!token);
+                
+                const response = await fetch('http://127.0.0.1:8000/api/inventory/categories/', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                console.log('Categories response:', data);
+                document.getElementById('results').innerHTML += '<h3>Categories:</h3><pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('results').innerHTML += '<h3>Error:</h3><pre>' + error.message + '</pre>';
+            }
+        }
+
+        async function testCreateProduct() {
+            try {
+                const token = localStorage.getItem('token');
+                const testProduct = {
+                    name: 'Producto Test',
+                    category_id: 1, // Usar ID de categoría existente
+                    price: 10000,
+                    stock: 10,
+                    min_stock: 5,
+                    description: 'Producto de prueba'
+                };
+                
+                console.log('Creating test product:', testProduct);
+                
+                const response = await fetch('http://127.0.0.1:8000/api/inventory/products/', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(testProduct)
+                });
+                
+                const data = await response.json();
+                console.log('Create product response:', data);
+                document.getElementById('results').innerHTML += '<h3>Create Product:</h3><pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('results').innerHTML += '<h3>Error:</h3><pre>' + error.message + '</pre>';
+            }
+        }
+    </script>
+</body>
+</html>

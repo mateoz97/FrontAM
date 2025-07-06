@@ -47,7 +47,7 @@ const Inventory = () => {
   
   // Estados para filtros y búsqueda
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [filteredProducts, setFilteredProducts] = useState([]);
   
@@ -63,7 +63,9 @@ const Inventory = () => {
   const [editProductModal, setEditProductModal] = useState(false);
   const [stockModal, setStockModal] = useState(false);
   const [addCategoryModal, setAddCategoryModal] = useState(false);
+  const [editCategoryModal, setEditCategoryModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState(null);
   
   // Estados para formularios
   const [productForm, setProductForm] = useState({
@@ -104,6 +106,21 @@ const Inventory = () => {
           inventoryService.getStockMovements({ limit: 50 })
         ]);
         
+        // Debug: Log loaded data
+        console.log('DEBUG LOAD - Products loaded:', productsData);
+        console.log('DEBUG LOAD - Categories loaded:', categoriesData);
+        console.log('DEBUG LOAD - Products with categories and types:', productsData.map(p => ({ 
+          id: p.id, 
+          name: p.name, 
+          category_id: p.category_id, 
+          category_id_type: typeof p.category_id 
+        })));
+        console.log('DEBUG LOAD - Categories with types:', categoriesData.map(c => ({ 
+          id: c.id, 
+          name: c.name, 
+          id_type: typeof c.id 
+        })));
+        
         setProducts(productsData);
         setCategories([{ id: '', name: 'Todas las categorías' }, ...categoriesData]);
         setStockMovements(movementsData);
@@ -133,9 +150,9 @@ const Inventory = () => {
       );
     }
 
-    // Filtro por categoría
-    if (selectedCategory && selectedCategory !== '') {
-      filtered = filtered.filter(product => product.category_id === selectedCategory);
+    // Filtro por categoría (normalizar tipos para comparación)
+    if (selectedCategoryFilter && selectedCategoryFilter !== '') {
+      filtered = filtered.filter(product => String(product.category_id || '') === String(selectedCategoryFilter));
     }
 
     // Filtro por estado de stock
@@ -157,7 +174,34 @@ const Inventory = () => {
 
     setFilteredProducts(filtered);
     setPage(0);
-  }, [products, searchTerm, selectedCategory, statusFilter]);
+  }, [products, searchTerm, selectedCategoryFilter, statusFilter]);
+
+  // Calcular estadísticas de categorías (memoizado para optimización)
+  const categoriesWithStats = React.useMemo(() => {
+    return categories.map(category => {
+      let productCount = 0;
+      
+      // Para la categoría "Todas las categorías" (id vacío), contar todos los productos
+      if (category.id === '' || category.id === null) {
+        productCount = products.length;
+      } else {
+        // Normalizar IDs para comparación (convertir a string para comparación segura)
+        const categoryIdStr = String(category.id);
+        productCount = products.filter(product => {
+          const productCategoryIdStr = String(product.category_id || '');
+          return productCategoryIdStr === categoryIdStr;
+        }).length;
+      }
+
+      // Debug logging para verificar el conteo
+      console.log(`DEBUG CATEGORY COUNT - Category: ${category.name} (ID: ${category.id}), Products: ${productCount}`);
+
+      return {
+        ...category,
+        productCount: productCount
+      };
+    });
+  }, [categories, products]);
 
   // Funciones de utilidad
   const getStatusChip = (product) => {
@@ -179,7 +223,14 @@ const Inventory = () => {
   };
 
   const getCategoryName = (categoryId) => {
-    const category = categories.find(cat => cat.id === categoryId);
+    // Debug: Log category lookup (simplificado)
+    console.log('DEBUG getCategoryName - categoryId:', categoryId, 'type:', typeof categoryId);
+    
+    // Intentar tanto comparación estricta como flexible para manejar diferencias de tipo
+    const category = categories.find(cat => cat.id === categoryId || cat.id == categoryId);
+    
+    console.log('DEBUG getCategoryName - found category:', category);
+    
     return category?.name || 'Sin categoría';
   };
 
@@ -211,8 +262,17 @@ const Inventory = () => {
   // Funciones CRUD para productos
   const handleCreateProduct = async () => {
     try {
+      // Debug: Log form values before processing
+      console.log('DEBUG - productForm before processing:', productForm);
+      console.log('DEBUG - productForm.category_id type:', typeof productForm.category_id);
+      console.log('DEBUG - productForm.category_id value:', productForm.category_id);
+      
       const productDataWithBusiness = {
         ...productForm,
+        // Convertir category_id a integer solo si tiene valor, mantener null si está vacío
+        category_id: productForm.category_id && productForm.category_id !== '' 
+          ? parseInt(productForm.category_id) 
+          : null,
         price: parseFloat(productForm.price) || 0,
         stock: parseInt(productForm.stock) || 0,
         min_stock: parseInt(productForm.min_stock) || 0,
@@ -220,9 +280,21 @@ const Inventory = () => {
         business: activeBusinessId || businessInfo?.id
       };
 
-      console.log('Creating product with business context:', productDataWithBusiness);
+      // Debug: Log final data structure
+      console.log('Creating product with data:', { 
+        name: productDataWithBusiness.name, 
+        category_id: productDataWithBusiness.category_id, 
+        category_id_type: typeof productDataWithBusiness.category_id 
+      });
 
       const newProduct = await inventoryService.createProduct(productDataWithBusiness);
+      
+      console.log('RESPONSE - Product created:', { 
+        id: newProduct.id, 
+        name: newProduct.name, 
+        category_id: newProduct.category_id, 
+        category_id_type: typeof newProduct.category_id 
+      });
 
       setProducts(prev => [newProduct, ...prev]);
       setAddProductModal(false);
@@ -231,6 +303,7 @@ const Inventory = () => {
       
     } catch (error) {
       console.error('Error creating product:', error);
+      console.error('Error response data:', error.response?.data);
       console.error('activeBusinessId:', activeBusinessId);
       console.error('Business info:', businessInfo);
       setSnackbar({ open: true, message: 'Error al crear el producto', severity: 'error' });
@@ -239,13 +312,36 @@ const Inventory = () => {
 
   const handleEditProduct = async () => {
     try {
-      const updatedProduct = await inventoryService.updateProduct(selectedProduct.id, {
+      // Debug: Log form values before processing
+      console.log('DEBUG EDIT - productForm before processing:', productForm);
+      console.log('DEBUG EDIT - productForm.category_id type:', typeof productForm.category_id);
+      console.log('DEBUG EDIT - productForm.category_id value:', productForm.category_id);
+      
+      const updateData = {
         ...productForm,
+        // Convertir category_id a integer solo si tiene valor, mantener null si está vacío
+        category_id: productForm.category_id && productForm.category_id !== '' 
+          ? parseInt(productForm.category_id) 
+          : null,
         price: parseFloat(productForm.price) || 0,
         stock: parseInt(productForm.stock) || 0,
         min_stock: parseInt(productForm.min_stock) || 0,
         cost: parseFloat(productForm.cost) || 0
-      });
+      };
+
+      // Debug: Log after processing
+      console.log('DEBUG EDIT - updateData after processing:', updateData);
+      console.log('DEBUG EDIT - category_id after parseInt:', updateData.category_id);
+
+      // ENVIAR category_id siempre (incluso si es null) para que el backend lo maneje
+      // NO eliminar category_id del objeto
+
+      console.log('Updating product with data (FINAL):', updateData);
+
+      const updatedProduct = await inventoryService.updateProduct(selectedProduct.id, updateData);
+      
+      console.log('RESPONSE EDIT - Product updated:', updatedProduct);
+      console.log('RESPONSE EDIT - Updated product category_id:', updatedProduct.category_id);
 
       setProducts(prev => prev.map(p => p.id === selectedProduct.id ? updatedProduct : p));
       setEditProductModal(false);
@@ -255,6 +351,7 @@ const Inventory = () => {
       
     } catch (error) {
       console.error('Error updating product:', error);
+      console.error('Error response data:', error.response?.data);
       setSnackbar({ open: true, message: 'Error al actualizar el producto', severity: 'error' });
     }
   };
@@ -362,6 +459,45 @@ const Inventory = () => {
     }
   };
 
+  const handleEditCategory = async () => {
+    try {
+      const updatedCategory = await inventoryService.updateCategory(selectedCategory.id, categoryForm);
+      setCategories(prev => prev.map(cat => cat.id === selectedCategory.id ? updatedCategory : cat));
+      setEditCategoryModal(false);
+      setSelectedCategory(null);
+      setCategoryForm({ name: '', description: '' });
+      setSnackbar({ open: true, message: 'Categoría actualizada exitosamente', severity: 'success' });
+    } catch (error) {
+      console.error('Error updating category:', error);
+      setSnackbar({ open: true, message: 'Error al actualizar la categoría', severity: 'error' });
+    }
+  };
+
+  const handleDeleteCategory = async (categoryId) => {
+    // Verificar si hay productos usando esta categoría (normalizar tipos para comparación)
+    const productsUsingCategory = products.filter(p => String(p.category_id || '') === String(categoryId));
+    
+    if (productsUsingCategory.length > 0) {
+      setSnackbar({ 
+        open: true, 
+        message: `No se puede eliminar la categoría porque tiene ${productsUsingCategory.length} producto(s) asociado(s)`, 
+        severity: 'warning' 
+      });
+      return;
+    }
+
+    if (window.confirm('¿Estás seguro de que quieres eliminar esta categoría?')) {
+      try {
+        await inventoryService.deleteCategory(categoryId);
+        setCategories(prev => prev.filter(cat => cat.id !== categoryId));
+        setSnackbar({ open: true, message: 'Categoría eliminada exitosamente', severity: 'success' });
+      } catch (error) {
+        console.error('Error deleting category:', error);
+        setSnackbar({ open: true, message: 'Error al eliminar la categoría', severity: 'error' });
+      }
+    }
+  };
+
   // Funciones de UI
   const openEditProduct = (product) => {
     setSelectedProduct(product);
@@ -375,6 +511,15 @@ const Inventory = () => {
       description: product.description || ''
     });
     setEditProductModal(true);
+  };
+
+  const openEditCategory = (category) => {
+    setSelectedCategory(category);
+    setCategoryForm({
+      name: category.name || '',
+      description: category.description || ''
+    });
+    setEditCategoryModal(true);
   };
 
   const openStockModal = (product) => {
@@ -488,8 +633,8 @@ const Inventory = () => {
             <FormControl size="small" sx={{ minWidth: 180 }}>
               <InputLabel>Categoría</InputLabel>
               <Select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
+                value={selectedCategoryFilter}
+                onChange={(e) => setSelectedCategoryFilter(e.target.value)}
                 label="Categoría"
               >
                 {categories.map((category) => (
@@ -692,7 +837,7 @@ const Inventory = () => {
         {/* Tab Panel: Categorías */}
         <TabPanel value={tabValue} index={1}>
           <Grid container spacing={2}>
-            {categories.filter(cat => cat.id !== '').map((category) => (
+            {categoriesWithStats.filter(cat => cat.id !== '').map((category) => (
               <Grid xs={12} sm={6} md={4} key={category.id}>
                 <Card>
                   <CardContent>
@@ -705,9 +850,31 @@ const Inventory = () => {
                       </Typography>
                     )}
                     <Typography variant="caption" color="textSecondary" sx={{ mt: 1, display: 'block' }}>
-                      {products.filter(p => p.category_id === category.id).length} productos
+                      {category.productCount} productos
                     </Typography>
                   </CardContent>
+                  {canManageInventory && (
+                    <CardActions>
+                      <Tooltip title="Editar categoría">
+                        <IconButton
+                          size="small"
+                          onClick={() => openEditCategory(category)}
+                          color="default"
+                        >
+                          <Edit />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Eliminar categoría">
+                        <IconButton
+                          size="small"
+                          onClick={() => handleDeleteCategory(category.id)}
+                          color="error"
+                        >
+                          <Delete />
+                        </IconButton>
+                      </Tooltip>
+                    </CardActions>
+                  )}
                 </Card>
               </Grid>
             ))}
@@ -958,6 +1125,38 @@ const Inventory = () => {
             disabled={!categoryForm.name}
           >
             Crear Categoría
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Modal: Editar Categoría */}
+      <Dialog open={editCategoryModal} onClose={() => setEditCategoryModal(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Editar Categoría</DialogTitle>
+        <DialogContent>
+          <TextField
+            fullWidth
+            label="Nombre de la categoría"
+            value={categoryForm.name}
+            onChange={(e) => setCategoryForm(prev => ({ ...prev, name: e.target.value }))}
+            sx={{ mt: 2, mb: 3 }}
+          />
+          <TextField
+            fullWidth
+            label="Descripción"
+            multiline
+            rows={3}
+            value={categoryForm.description}
+            onChange={(e) => setCategoryForm(prev => ({ ...prev, description: e.target.value }))}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditCategoryModal(false)}>Cancelar</Button>
+          <Button 
+            onClick={handleEditCategory} 
+            variant="contained"
+            disabled={!categoryForm.name}
+          >
+            Guardar Cambios
           </Button>
         </DialogActions>
       </Dialog>

@@ -65,7 +65,7 @@ export const useAccessibleForm = (initialValues = {}, validationRules = {}) => {
 
     // Validación de teléfono
     if (rules.phone && value) {
-      const phoneRegex = /^\+?[\d\s\-\(\)]+$/;
+      const phoneRegex = /^\+?[\d\s\-()]+$/;
       if (!phoneRegex.test(value) || value.replace(/\D/g, '').length < 10) {
         return 'Ingresa un teléfono válido (ejemplo: +57 300 123 4567)';
       }

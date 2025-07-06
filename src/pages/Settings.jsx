@@ -48,7 +48,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../hooks/useSettings';
-import { useTheme } from '../contexts/ThemeContext';
+import { useAppTheme } from '../contexts/ThemeContext';
 
 // Componente de Tab Panel
 function TabPanel({ children, value, index, ...other }) {
@@ -67,7 +67,7 @@ function TabPanel({ children, value, index, ...other }) {
 
 const Settings = () => {
   useAuth();
-  const { mode, toggleTheme, setThemeMode, isDark } = useTheme();
+  const { mode, toggleTheme, setThemeMode, isDark } = useAppTheme();
   const {
     userSettings,
     businessSettings,

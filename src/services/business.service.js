@@ -598,6 +598,292 @@ const businessService = {
       console.error(`Error al remover usuario ${userId}:`, error);
       throw error;
     }
+  },
+
+  // =================== BUSINESS DELETION & SCHEMA MANAGEMENT ===================
+
+  /**
+   * Obtiene el estado del esquema de un negocio
+   * @param {number} businessId - ID del negocio
+   * @returns {Promise<Object>} Información del estado del esquema
+   */
+  async getSchemaStatus(businessId) {
+    try {
+      console.log(`Obteniendo estado del esquema para negocio ${businessId}...`);
+      const response = await api.get(`/business/${businessId}/schema-status/`);
+      console.log('Estado del esquema obtenido:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error(`Error al obtener estado del esquema para negocio ${businessId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Elimina un negocio de forma segura
+   * @param {number} businessId - ID del negocio a eliminar
+   * @returns {Promise<Object>} Resultado de la eliminación
+   */
+  async deleteBusiness(businessId) {
+    try {
+      console.log(`Eliminando negocio ${businessId}...`);
+      const response = await api.delete(`/business/${businessId}/`);
+      console.log('Negocio eliminado exitosamente:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error(`Error al eliminar negocio ${businessId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Verifica la integridad del esquema de un negocio
+   * @param {number} businessId - ID del negocio
+   * @returns {Promise<Object>} Resultado de la verificación
+   */
+  async verifySchemaIntegrity(businessId) {
+    try {
+      console.log(`Verificando integridad del esquema para negocio ${businessId}...`);
+      const response = await api.post(`/business/${businessId}/verify-schema/`);
+      console.log('Verificación de integridad completada:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error(`Error al verificar integridad del esquema para negocio ${businessId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Limpia esquemas huérfanos del sistema
+   * @returns {Promise<Object>} Resultado de la limpieza
+   */
+  async cleanupOrphanedSchemas() {
+    try {
+      console.log('Iniciando limpieza de esquemas huérfanos...');
+      const response = await api.post('/business/cleanup-orphaned-schemas/');
+      console.log('Limpieza de esquemas completada:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error al limpiar esquemas huérfanos:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Obtiene logs de mantenimiento del sistema
+   * @param {Object} filters - Filtros opcionales (date_from, date_to, level)
+   * @returns {Promise<Array>} Lista de logs
+   */
+  async getMaintenanceLogs(filters = {}) {
+    try {
+      console.log('Obteniendo logs de mantenimiento...', filters);
+      const response = await api.get('/business/maintenance-logs/', {
+        params: filters
+      });
+      console.log('Logs de mantenimiento obtenidos:', response.data);
+      
+      // Manejar diferentes formatos de respuesta
+      if (Array.isArray(response.data)) {
+        return response.data;
+      } else if (response.data && response.data.results) {
+        return response.data.results;
+      }
+      
+      return response.data || [];
+    } catch (error) {
+      console.error('Error al obtener logs de mantenimiento:', error);
+      return [];
+    }
+  },
+
+  // =================== BUSINESS TYPES ===================
+
+  /**
+   * Obtiene los tipos de negocio disponibles
+   * @returns {Promise<Array>} Lista de tipos de negocio
+   */
+  async getBusinessTypes() {
+    try {
+      console.log('Obteniendo tipos de negocio...');
+      const response = await api.get('/business/types/');
+      console.log('Tipos de negocio obtenidos:', response.data);
+      
+      if (Array.isArray(response.data)) {
+        return response.data;
+      } else if (response.data && response.data.results) {
+        return response.data.results;
+      }
+      
+      return response.data || [];
+    } catch (error) {
+      console.error('Error al obtener tipos de negocio:', error);
+      return [];
+    }
+  },
+
+  /**
+   * Obtiene la configuración específica de un tipo de negocio
+   * @param {string} businessType - Tipo de negocio
+   * @returns {Promise<Object>} Configuración del tipo de negocio
+   */
+  async getBusinessTypeConfig(businessType) {
+    try {
+      console.log(`Obteniendo configuración para tipo de negocio: ${businessType}`);
+      const response = await api.get(`/business/types/${businessType}/config/`);
+      console.log('Configuración obtenida:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error(`Error al obtener configuración para ${businessType}:`, error);
+      return {};
+    }
+  },
+
+  /**
+   * Actualiza el tipo de negocio
+   * @param {number} businessId - ID del negocio
+   * @param {string} businessType - Nuevo tipo de negocio
+   * @returns {Promise<Object>} Negocio actualizado
+   */
+  async updateBusinessType(businessId, businessType) {
+    try {
+      console.log(`Actualizando tipo de negocio ${businessId} a ${businessType}`);
+      const response = await api.patch(`/business/${businessId}/`, {
+        business_type: businessType
+      });
+      console.log('Tipo de negocio actualizado:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error(`Error al actualizar tipo de negocio:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Obtiene las características disponibles según el tipo de negocio
+   * @param {string} businessType - Tipo de negocio
+   * @returns {Promise<Object>} Características disponibles
+   */
+  async getBusinessTypeFeatures(businessType) {
+    try {
+      console.log(`Obteniendo características para tipo: ${businessType}`);
+      const response = await api.get(`/business/types/${businessType}/features/`);
+      console.log('Características obtenidas:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error(`Error al obtener características para ${businessType}:`, error);
+      return {
+        hasOrders: false,
+        hasInventory: false,
+        hasReservations: false,
+        hasMenus: false,
+        modules: []
+      };
+    }
+  },
+
+  /**
+   * Configura los módulos activos para un negocio
+   * @param {number} businessId - ID del negocio
+   * @param {Array} modules - Lista de módulos a activar
+   * @returns {Promise<Object>} Configuración actualizada
+   */
+  async updateBusinessModules(businessId, modules) {
+    try {
+      console.log(`Actualizando módulos para negocio ${businessId}:`, modules);
+      const response = await api.patch(`/business/${businessId}/modules/`, {
+        active_modules: modules
+      });
+      console.log('Módulos actualizados:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error(`Error al actualizar módulos del negocio:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Obtiene plantillas de configuración para tipos de negocio
+   * @param {string} businessType - Tipo de negocio
+   * @returns {Promise<Object>} Plantilla de configuración
+   */
+  async getBusinessTemplate(businessType) {
+    try {
+      console.log(`Obteniendo plantilla para tipo: ${businessType}`);
+      const response = await api.get(`/business/templates/${businessType}/`);
+      console.log('Plantilla obtenida:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error(`Error al obtener plantilla para ${businessType}:`, error);
+      return {};
+    }
+  },
+
+  /**
+   * Aplica una plantilla de configuración a un negocio
+   * @param {number} businessId - ID del negocio
+   * @param {string} templateType - Tipo de plantilla
+   * @returns {Promise<Object>} Resultado de la aplicación
+   */
+  async applyBusinessTemplate(businessId, templateType) {
+    try {
+      console.log(`Aplicando plantilla ${templateType} al negocio ${businessId}`);
+      const response = await api.post(`/business/${businessId}/apply-template/`, {
+        template_type: templateType
+      });
+      console.log('Plantilla aplicada:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error(`Error al aplicar plantilla:`, error);
+      throw error;
+    }
+  },
+
+  // =================== BUSINESS STATISTICS ===================
+
+  /**
+   * Obtiene estadísticas del negocio
+   * @returns {Promise<Object>} Estadísticas del negocio
+   */
+  async getBusinessStats() {
+    try {
+      console.log('Obteniendo estadísticas del negocio...');
+      const response = await api.get('/business/stats/');
+      console.log('Estadísticas obtenidas:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error al obtener estadísticas del negocio:', error);
+      return {
+        total_orders: 0,
+        active_users: 0,
+        revenue: 0,
+        pending_requests: 0
+      };
+    }
+  },
+
+  /**
+   * Obtiene el reporte de actividad del negocio
+   * @param {Object} params - Parámetros del reporte (period, date_from, date_to)
+   * @returns {Promise<Object>} Reporte de actividad
+   */
+  async getActivityReport(params = {}) {
+    try {
+      console.log('Obteniendo reporte de actividad...', params);
+      const response = await api.get('/business/activity-report/', {
+        params
+      });
+      console.log('Reporte de actividad obtenido:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error al obtener reporte de actividad:', error);
+      return {
+        period: params.period || 'day',
+        total_activity: 0,
+        user_activity: [],
+        order_activity: [],
+        peak_hours: []
+      };
+    }
   }
 };
 

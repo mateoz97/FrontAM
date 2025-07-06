@@ -4,10 +4,10 @@ import { useThemeMode } from '../hooks/useThemeMode';
 
 const ThemeContext = createContext();
 
-export const useTheme = () => {
+export const useAppTheme = () => {
   const context = useContext(ThemeContext);
   if (!context) {
-    throw new Error('useTheme debe usarse dentro de un ThemeProvider');
+    throw new Error('useAppTheme debe usarse dentro de un ThemeProvider');
   }
   return context;
 };

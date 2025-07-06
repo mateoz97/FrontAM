@@ -1,10 +1,10 @@
-// src/App.jsx - Versión actualizada con las nuevas páginas
+// src/App.jsx - Versión actualizada con las nuevas páginas y AI Assistant
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { createAppTheme } from './styles/theme';
-import { useThemeMode } from './hooks/useThemeMode';
+import { useAppTheme } from './contexts/ThemeContext';
 import { ThemeContextProvider } from './contexts/ThemeContext';
 
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -25,6 +25,9 @@ import OrdersBoard from './pages/OrdersBoard';
 // Debug component
 import LoginDebug from './components/debug/LoginDebug';
 import BusinessSetup from './components/auth/BusinessSetup';
+
+// AI Assistant Global
+import GlobalAIAssistant from './components/ai/GlobalAIAssistant';
 
 // Componente para rutas protegidas
 const ProtectedRoute = ({ children }) => {
@@ -86,13 +89,12 @@ const BusinessRedirect = ({ children }) => {
   return children;
 };
 
-function App() {
-  const { mode } = useThemeMode();
+const AppContent = () => {
+  const { mode } = useAppTheme();
   const theme = React.useMemo(() => createAppTheme(mode), [mode]);
 
   return (
-    <ThemeContextProvider>
-      <ThemeProvider theme={theme}>
+    <ThemeProvider theme={theme}>
         <CssBaseline />
         <Router>
           <AuthProvider>
@@ -156,9 +158,19 @@ function App() {
             </Route>
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
+          
+          {/* AI Assistant Global - Disponible en toda la app */}
+          <GlobalAIAssistant />
           </AuthProvider>
         </Router>
       </ThemeProvider>
+  );
+};
+
+function App() {
+  return (
+    <ThemeContextProvider>
+      <AppContent />
     </ThemeContextProvider>
   );
 }

@@ -284,6 +284,178 @@ const inventoryService = {
       console.error('Error al obtener productos con stock bajo:', error);
       return [];
     }
+  },
+
+  // =================== ADVANCED SEARCH ===================
+
+  /**
+   * Búsqueda avanzada de productos con filtros múltiples
+   * @param {Object} filters - Filtros de búsqueda avanzada
+   * @param {string} filters.name - Buscar por nombre
+   * @param {string} filters.category - Filtrar por categoría
+   * @param {number} filters.min_price - Precio mínimo
+   * @param {number} filters.max_price - Precio máximo
+   * @param {number} filters.min_stock - Stock mínimo
+   * @param {number} filters.max_stock - Stock máximo
+   * @param {boolean} filters.is_active - Solo productos activos
+   * @param {string} filters.created_after - Creados después de esta fecha
+   * @param {string} filters.created_before - Creados antes de esta fecha
+   * @returns {Promise<Array>} Lista de productos encontrados
+   */
+  async advancedSearch(filters = {}) {
+    try {
+      console.log('Realizando búsqueda avanzada de productos:', filters);
+      const response = await api.get('/inventory/products/advanced_search/', {
+        params: filters
+      });
+      
+      // Manejar diferentes formatos de respuesta
+      if (Array.isArray(response.data)) {
+        return response.data;
+      } else if (response.data && response.data.results) {
+        return response.data.results;
+      }
+      
+      return response.data || [];
+    } catch (error) {
+      console.error('Error en búsqueda avanzada de productos:', error);
+      return [];
+    }
+  },
+
+  /**
+   * Búsqueda de productos por múltiples criterios
+   * @param {Object} criteria - Criterios de búsqueda
+   * @param {Array} criteria.categories - Array de IDs de categorías
+   * @param {Array} criteria.tags - Array de tags
+   * @param {string} criteria.availability - 'in_stock', 'low_stock', 'out_of_stock'
+   * @param {string} criteria.sort_by - 'name', 'price', 'stock', 'created_at'
+   * @param {string} criteria.order - 'asc' o 'desc'
+   * @returns {Promise<Array>} Lista de productos encontrados
+   */
+  async searchByMultipleCriteria(criteria = {}) {
+    try {
+      console.log('Búsqueda por múltiples criterios:', criteria);
+      
+      // Construir parámetros de búsqueda
+      const searchParams = {};
+      
+      if (criteria.categories && criteria.categories.length > 0) {
+        searchParams.categories = criteria.categories.join(',');
+      }
+      
+      if (criteria.tags && criteria.tags.length > 0) {
+        searchParams.tags = criteria.tags.join(',');
+      }
+      
+      if (criteria.availability) {
+        searchParams.availability = criteria.availability;
+      }
+      
+      if (criteria.sort_by) {
+        searchParams.ordering = criteria.order === 'desc' ? `-${criteria.sort_by}` : criteria.sort_by;
+      }
+      
+      const response = await api.get('/inventory/products/', {
+        params: searchParams
+      });
+      
+      // Manejar diferentes formatos de respuesta
+      if (Array.isArray(response.data)) {
+        return response.data;
+      } else if (response.data && response.data.results) {
+        return response.data.results;
+      }
+      
+      return response.data || [];
+    } catch (error) {
+      console.error('Error en búsqueda por múltiples criterios:', error);
+      return [];
+    }
+  },
+
+  // =================== BULK OPERATIONS ===================
+
+  /**
+   * Actualización masiva de productos
+   * @param {Array} updates - Array de objetos {id, data}
+   * @returns {Promise<Object>} Resultado de la operación
+   */
+  async bulkUpdateProducts(updates) {
+    try {
+      console.log('Actualizando productos masivamente:', updates);
+      const response = await api.post('/inventory/products/bulk_update/', { updates });
+      console.log('Actualización masiva completada:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error en actualización masiva de productos:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Eliminación masiva de productos
+   * @param {Array} productIds - Array de IDs de productos
+   * @returns {Promise<Object>} Resultado de la operación
+   */
+  async bulkDeleteProducts(productIds) {
+    try {
+      console.log('Eliminando productos masivamente:', productIds);
+      const response = await api.post('/inventory/products/bulk_delete/', { ids: productIds });
+      console.log('Eliminación masiva completada:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error en eliminación masiva de productos:', error);
+      throw error;
+    }
+  },
+
+  // =================== EXPORT/IMPORT ===================
+
+  /**
+   * Exportar productos a CSV/JSON
+   * @param {string} format - 'csv' o 'json'
+   * @param {Object} filters - Filtros para exportación
+   * @returns {Promise<Blob>} Archivo de exportación
+   */
+  async exportProducts(format = 'csv', filters = {}) {
+    try {
+      console.log(`Exportando productos en formato ${format}:`, filters);
+      const response = await api.get('/inventory/products/export/', {
+        params: { format, ...filters },
+        responseType: 'blob'
+      });
+      
+      return response.data;
+    } catch (error) {
+      console.error('Error al exportar productos:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Importar productos desde archivo
+   * @param {File} file - Archivo CSV/JSON
+   * @returns {Promise<Object>} Resultado de la importación
+   */
+  async importProducts(file) {
+    try {
+      console.log('Importando productos desde archivo:', file.name);
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await api.post('/inventory/products/import/', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      console.log('Importación completada:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error al importar productos:', error);
+      throw error;
+    }
   }
 };
 

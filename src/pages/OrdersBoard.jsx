@@ -55,8 +55,13 @@ const OrdersBoard = () => {
   const [stats, setStats] = useState({
     total: 0,
     pending: 0,
+    confirmed: 0,
     preparing: 0,
     ready: 0,
+    paid: 0,
+    delivered: 0,
+    refunded: 0,
+    cancelled: 0,
     avgWaitTime: 0
   });
 
@@ -140,7 +145,7 @@ const OrdersBoard = () => {
       
       // Cargar todas las órdenes activas con filtros de fecha
       const allOrders = await ordersService.getOrders({
-        status__in: 'pending,confirmed,preparing,ready,refund',
+        status__in: 'pending,confirmed,preparing,ready,paid,delivered,refunded',
         ...dateFilters
       });
       
@@ -280,9 +285,12 @@ const OrdersBoard = () => {
     const newStats = {
       total: orders.length,
       pending: orders.filter(o => o.status === 'pending').length,
+      confirmed: orders.filter(o => o.status === 'confirmed').length,
       preparing: orders.filter(o => o.status === 'preparing').length,
       ready: orders.filter(o => o.status === 'ready').length,
-      refund: orders.filter(o => o.status === 'refund').length,
+      paid: orders.filter(o => o.status === 'paid').length,
+      delivered: orders.filter(o => o.status === 'delivered').length,
+      refunded: orders.filter(o => o.status === 'refunded').length,
       cancelled: cancelledOrders.length,
       avgWaitTime: orders.reduce((acc, o) => acc + o.timeElapsed, 0) / orders.length || 0
     };
@@ -309,11 +317,13 @@ const OrdersBoard = () => {
   const getStatusColor = (status) => {
     const colors = {
       pending: 'warning',
-      preparing: 'info',
+      confirmed: 'info',
+      preparing: 'primary',
       ready: 'success',
-      completed: 'default',
+      paid: 'secondary',
+      delivered: 'default',
       cancelled: 'error',
-      refund: 'secondary'
+      refunded: 'secondary'
     };
     return colors[status] || 'default';
   };
@@ -321,11 +331,13 @@ const OrdersBoard = () => {
   const getStatusIcon = (status) => {
     const icons = {
       pending: <Schedule />,
+      confirmed: <CheckCircle />,
       preparing: <Kitchen />,
       ready: <CheckCircle />,
-      completed: <DoneAll />,
+      paid: <DoneAll />,
+      delivered: <LocalShipping />,
       cancelled: <Cancel />,
-      refund: <LocalShipping />
+      refunded: <LocalShipping />
     };
     return icons[status] || <Schedule />;
   };
@@ -794,7 +806,7 @@ const OrdersBoard = () => {
     
     try {
       setProcessingRefund(true);
-      await ordersService.updateOrderStatus(selectedOrder.id, 'refund');
+      await ordersService.updateOrderStatus(selectedOrder.id, 'refunded');
       // Si hay un campo para razón de reembolso en el backend
       if (refundReason) {
         await ordersService.updateOrder(selectedOrder.id, { refund_reason: refundReason });
@@ -1086,6 +1098,19 @@ const OrdersBoard = () => {
             <Card>
               <CardContent sx={{ textAlign: 'center', py: 2 }}>
                 <Typography variant="h3" color="info.main" fontWeight="bold">
+                  {stats.confirmed}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Confirmados
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          
+          <Grid xs={6} sm={4} md={2.4}>
+            <Card>
+              <CardContent sx={{ textAlign: 'center', py: 2 }}>
+                <Typography variant="h3" color="primary.main" fontWeight="bold">
                   {stats.preparing}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
@@ -1112,7 +1137,33 @@ const OrdersBoard = () => {
             <Card>
               <CardContent sx={{ textAlign: 'center', py: 2 }}>
                 <Typography variant="h3" color="secondary.main" fontWeight="bold">
-                  {stats.refund || 0}
+                  {stats.paid}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Pagados
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          
+          <Grid xs={6} sm={4} md={2.4}>
+            <Card>
+              <CardContent sx={{ textAlign: 'center', py: 2 }}>
+                <Typography variant="h3" color="default" fontWeight="bold">
+                  {stats.delivered}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Entregados
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          
+          <Grid xs={6} sm={4} md={2.4}>
+            <Card>
+              <CardContent sx={{ textAlign: 'center', py: 2 }}>
+                <Typography variant="h3" color="secondary.main" fontWeight="bold">
+                  {stats.refunded || 0}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   Reembolsos
@@ -1138,7 +1189,7 @@ const OrdersBoard = () => {
         {/* Grid de pedidos por estado */}
         <Grid container spacing={2}>
           {/* Columna Pendientes */}
-          <Grid xs={12} sm={6} md={4} lg={2.4}>
+          <Grid xs={12} sm={6} md={4} lg={1.7}>
             <Paper sx={{ p: 3, height: '75vh', overflow: 'auto', borderRadius: 2 }}>
               <Box sx={{ 
                 display: 'flex', 
@@ -1247,13 +1298,14 @@ const OrdersBoard = () => {
                           <Button 
                             size="small" 
                             variant="contained"
-                            startIcon={<PlayArrow />}
+                            color="info"
+                            startIcon={<CheckCircle />}
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleStatusChange(order.id, 'preparing');
+                              handleStatusChange(order.id, 'confirmed');
                             }}
                           >
-                            Iniciar
+                            Confirmar
                           </Button>
                           <IconButton 
                             size="small"
@@ -1282,8 +1334,114 @@ const OrdersBoard = () => {
             </Paper>
           </Grid>
 
+          {/* Columna Confirmados */}
+          <Grid xs={12} sm={6} md={4} lg={1.7}>
+            <Paper sx={{ p: 3, height: '75vh', overflow: 'auto', borderRadius: 2 }}>
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between',
+                mb: 2 
+              }}>
+                <Typography variant="h6" fontWeight="bold">
+                  ✅ Confirmados
+                </Typography>
+                <Badge badgeContent={stats.confirmed} color="info">
+                  <CheckCircle />
+                </Badge>
+              </Box>
+              
+              <Stack spacing={3}>
+                {orders
+                  .filter(order => order.status === 'confirmed')
+                  .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+                  .map((order) => (
+                    <Card 
+                      key={order.id}
+                      sx={{ 
+                        border: `2px solid ${getPriorityColor(order.priority)}`,
+                        cursor: 'pointer',
+                        borderRadius: 2,
+                        transition: 'all 0.3s ease',
+                        '&:hover': { 
+                          boxShadow: 6,
+                          transform: 'translateY(-2px)'
+                        }
+                      }}
+                      onClick={() => handleOrderDetail(order)}
+                    >
+                      <CardHeader
+                        avatar={
+                          <Avatar sx={{ bgcolor: getPriorityColor(order.priority) }}>
+                            {order.orderNumber}
+                          </Avatar>
+                        }
+                        title={
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="subtitle1" fontWeight="bold">
+                              {order.customerName}
+                            </Typography>
+                            {getTypeIcon(order.type)}
+                          </Box>
+                        }
+                        subheader={
+                          <Chip 
+                            label="Confirmado" 
+                            color="info" 
+                            size="small" 
+                            icon={<CheckCircle />}
+                          />
+                        }
+                      />
+                      
+                      <CardContent>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                            Mesa: {order.tableNumber || 'N/A'} • Hace {order.timeElapsed} min
+                          </Typography>
+                          <Typography variant="body2" sx={{ mb: 1 }}>
+                            Items: {order.items?.length || 0} • ${order.total || 0}
+                          </Typography>
+                          {order.notes && (
+                            <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                              "{order.notes}"
+                            </Typography>
+                          )}
+                        </Box>
+                        
+                        <Box>
+                          <LinearProgress 
+                            variant="determinate" 
+                            value={Math.min((order.timeElapsed / order.estimatedTime) * 100, 100)}
+                            color={getTimeColor(order.timeElapsed, order.estimatedTime)}
+                            sx={{ mt: 1, height: 6, borderRadius: 3 }}
+                          />
+                        </Box>
+                      </CardContent>
+                      
+                      {canUpdateOrders && (
+                        <CardActions>
+                          <Button 
+                            size="small" 
+                            variant="contained"
+                            startIcon={<PlayArrow />}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleStatusChange(order.id, 'preparing');
+                            }}
+                          >
+                            Iniciar
+                          </Button>
+                        </CardActions>
+                      )}
+                    </Card>
+                  ))}
+              </Stack>
+            </Paper>
+          </Grid>
+
           {/* Columna Preparando */}
-          <Grid xs={12} sm={6} md={4} lg={2.4}>
+          <Grid xs={12} sm={6} md={4} lg={1.7}>
             <Paper sx={{ p: 3, height: '75vh', overflow: 'auto', borderRadius: 2 }}>
               <Box sx={{ 
                 display: 'flex', 
@@ -1419,7 +1577,7 @@ const OrdersBoard = () => {
           </Grid>
 
           {/* Columna Listos */}
-          <Grid xs={12} sm={6} md={4} lg={2.4}>
+          <Grid xs={12} sm={6} md={4} lg={1.7}>
             <Paper sx={{ p: 3, height: '75vh', overflow: 'auto', borderRadius: 2 }}>
               <Box sx={{ 
                 display: 'flex', 
@@ -1517,14 +1675,14 @@ const OrdersBoard = () => {
                           <Button 
                             size="small" 
                             variant="contained"
-                            color="primary"
+                            color="secondary"
                             startIcon={<DoneAll />}
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleStatusChange(order.id, 'completed');
+                              handleStatusChange(order.id, 'paid');
                             }}
                           >
-                            Entregado
+                            Marcar Pagado
                           </Button>
                           <IconButton 
                             size="small"
@@ -1556,8 +1714,188 @@ const OrdersBoard = () => {
             </Paper>
           </Grid>
 
+          {/* Columna Pagados */}
+          <Grid xs={12} sm={6} md={4} lg={1.7}>
+            <Paper sx={{ p: 3, height: '75vh', overflow: 'auto', borderRadius: 2 }}>
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between',
+                mb: 2 
+              }}>
+                <Typography variant="h6" fontWeight="bold">
+                  💳 Pagados
+                </Typography>
+                <Badge badgeContent={stats.paid} color="secondary">
+                  <DoneAll />
+                </Badge>
+              </Box>
+              
+              <Stack spacing={3}>
+                {orders
+                  .filter(order => order.status === 'paid')
+                  .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+                  .map((order) => (
+                    <Card 
+                      key={order.id}
+                      sx={{ 
+                        border: `2px solid ${getPriorityColor(order.priority)}`,
+                        cursor: 'pointer',
+                        borderRadius: 2,
+                        transition: 'all 0.3s ease',
+                        '&:hover': { 
+                          boxShadow: 6,
+                          transform: 'translateY(-2px)'
+                        }
+                      }}
+                      onClick={() => handleOrderDetail(order)}
+                    >
+                      <CardHeader
+                        avatar={
+                          <Avatar sx={{ bgcolor: getPriorityColor(order.priority) }}>
+                            {order.orderNumber}
+                          </Avatar>
+                        }
+                        title={
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="subtitle1" fontWeight="bold">
+                              {order.customerName}
+                            </Typography>
+                            {getTypeIcon(order.type)}
+                          </Box>
+                        }
+                        subheader={
+                          <Chip 
+                            label="Pagado" 
+                            color="secondary" 
+                            size="small" 
+                            icon={<DoneAll />}
+                          />
+                        }
+                      />
+                      
+                      <CardContent>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                            Mesa: {order.tableNumber || 'N/A'} • Hace {order.timeElapsed} min
+                          </Typography>
+                          <Typography variant="body2" sx={{ mb: 1 }}>
+                            Items: {order.items?.length || 0} • ${order.total || 0}
+                          </Typography>
+                          {order.notes && (
+                            <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                              "{order.notes}"
+                            </Typography>
+                          )}
+                        </Box>
+                      </CardContent>
+                      
+                      {canUpdateOrders && (
+                        <CardActions>
+                          <Button 
+                            size="small" 
+                            variant="contained"
+                            color="primary"
+                            startIcon={<LocalShipping />}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleStatusChange(order.id, 'delivered');
+                            }}
+                          >
+                            Entregar
+                          </Button>
+                        </CardActions>
+                      )}
+                    </Card>
+                  ))}
+              </Stack>
+            </Paper>
+          </Grid>
+
+          {/* Columna Entregados */}
+          <Grid xs={12} sm={6} md={4} lg={1.7}>
+            <Paper sx={{ p: 3, height: '75vh', overflow: 'auto', borderRadius: 2 }}>
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between',
+                mb: 2 
+              }}>
+                <Typography variant="h6" fontWeight="bold">
+                  🚚 Entregados
+                </Typography>
+                <Badge badgeContent={stats.delivered} color="default">
+                  <LocalShipping />
+                </Badge>
+              </Box>
+              
+              <Stack spacing={3}>
+                {orders
+                  .filter(order => order.status === 'delivered')
+                  .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                  .map((order) => (
+                    <Card 
+                      key={order.id}
+                      sx={{ 
+                        border: `2px solid ${getPriorityColor(order.priority)}`,
+                        cursor: 'pointer',
+                        borderRadius: 2,
+                        transition: 'all 0.3s ease',
+                        opacity: 0.8,
+                        '&:hover': { 
+                          boxShadow: 4,
+                          opacity: 1
+                        }
+                      }}
+                      onClick={() => handleOrderDetail(order)}
+                    >
+                      <CardHeader
+                        avatar={
+                          <Avatar sx={{ bgcolor: getPriorityColor(order.priority) }}>
+                            {order.orderNumber}
+                          </Avatar>
+                        }
+                        title={
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="subtitle1" fontWeight="bold">
+                              {order.customerName}
+                            </Typography>
+                            {getTypeIcon(order.type)}
+                          </Box>
+                        }
+                        subheader={
+                          <Chip 
+                            label="Entregado" 
+                            color="default" 
+                            size="small" 
+                            icon={<LocalShipping />}
+                          />
+                        }
+                      />
+                      
+                      <CardContent>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                            Mesa: {order.tableNumber || 'N/A'} • Hace {order.timeElapsed} min
+                          </Typography>
+                          <Typography variant="body2" sx={{ mb: 1 }}>
+                            Items: {order.items?.length || 0} • ${order.total || 0}
+                          </Typography>
+                          {order.notes && (
+                            <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                              "{order.notes}"
+                            </Typography>
+                          )}
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  ))}
+              </Stack>
+            </Paper>
+          </Grid>
+
           {/* Columna Reembolsos */}
-          <Grid xs={12} sm={6} md={4} lg={2.4}>
+          <Grid xs={12} sm={6} md={4} lg={1.7}>
             <Paper sx={{ p: 3, height: '75vh', overflow: 'auto', borderRadius: 2 }}>
               <Box sx={{ 
                 display: 'flex', 
@@ -1568,14 +1906,14 @@ const OrdersBoard = () => {
                 <Typography variant="h6" fontWeight="bold">
                   💰 Reembolsos
                 </Typography>
-                <Badge badgeContent={stats.refund || 0} color="secondary">
+                <Badge badgeContent={stats.refunded || 0} color="secondary">
                   <LocalShipping />
                 </Badge>
               </Box>
               
               <Stack spacing={3}>
                 {orders
-                  .filter(order => order.status === 'refund')
+                  .filter(order => order.status === 'refunded')
                   .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
                   .map((order) => (
                     <Card 
@@ -1654,7 +1992,7 @@ const OrdersBoard = () => {
           </Grid>
 
           {/* Columna Cancelados */}
-          <Grid xs={12} sm={6} md={4} lg={2.4}>
+          <Grid xs={12} sm={6} md={4} lg={1.7}>
             <Paper sx={{ p: 3, height: '75vh', overflow: 'auto', borderRadius: 2 }}>
               <Box sx={{ 
                 display: 'flex', 
@@ -1992,7 +2330,7 @@ const OrdersBoard = () => {
                   color="primary"
                   startIcon={<DoneAll />}
                   onClick={() => {
-                    handleStatusChange(selectedOrder.id, 'completed');
+                    handleStatusChange(selectedOrder.id, 'delivered');
                     setDetailModal(false);
                   }}
                 >
@@ -2000,7 +2338,7 @@ const OrdersBoard = () => {
                 </Button>
               )}
               {/* Botón de cancelar - solo si el pedido no está cancelado o completado */}
-              {selectedOrder.status !== 'cancelled' && selectedOrder.status !== 'completed' && (
+              {selectedOrder.status !== 'cancelled' && selectedOrder.status !== 'delivered' && (
                 <Button 
                   variant="outlined"
                   color="error"

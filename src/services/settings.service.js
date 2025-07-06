@@ -361,6 +361,60 @@ class SettingsService {
     }
   }
 
+  /**
+   * Importar configuraciones desde archivo
+   * POST /settings/summary/import_settings/
+   */
+  async importSettings(settingsFile) {
+    try {
+      const formData = new FormData();
+      formData.append('file', settingsFile);
+      
+      const response = await api.post('/settings/summary/import_settings/', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      return {
+        success: true,
+        data: response.data,
+        message: 'Configuraciones importadas exitosamente'
+      };
+    } catch (error) {
+      console.error('Error importing settings:', error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || 'Error al importar configuraciones',
+        status: error.response?.status,
+        validationErrors: error.response?.data
+      };
+    }
+  }
+
+  /**
+   * Actualización masiva de configuraciones (usuario y negocio)
+   * POST /settings/summary/bulk_update_settings/
+   */
+  async bulkUpdateSettings(settingsData) {
+    try {
+      const response = await api.post('/settings/summary/bulk_update_settings/', settingsData);
+      return {
+        success: true,
+        data: response.data,
+        message: 'Configuraciones actualizadas masivamente'
+      };
+    } catch (error) {
+      console.error('Error bulk updating settings:', error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || 'Error al actualizar configuraciones masivamente',
+        status: error.response?.status,
+        validationErrors: error.response?.data
+      };
+    }
+  }
+
   // =================== HELPER METHODS ===================
 
   /**
@@ -466,6 +520,55 @@ class SettingsService {
         success: false,
         error: 'Error al cargar configuraciones'
       };
+    }
+  }
+
+  /**
+   * Importar configuraciones desde un archivo con manejo de UI
+   */
+  async importSettingsFromFile(file) {
+    try {
+      const importResult = await this.importSettings(file);
+      
+      if (!importResult.success) {
+        return importResult;
+      }
+
+      return {
+        success: true,
+        data: importResult.data,
+        message: `Configuraciones importadas desde ${file.name}`
+      };
+    } catch (error) {
+      console.error('Error importing settings from file:', error);
+      return {
+        success: false,
+        error: 'Error al procesar archivo de configuraciones'
+      };
+    }
+  }
+
+  /**
+   * Validar archivo de configuraciones antes de importar
+   */
+  async validateSettingsFile(file) {
+    try {
+      if (!file) {
+        return { valid: false, error: 'No se seleccionó archivo' };
+      }
+
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        return { valid: false, error: 'El archivo es demasiado grande (máximo 5MB)' };
+      }
+
+      const allowedTypes = ['application/json', 'text/json'];
+      if (!allowedTypes.includes(file.type)) {
+        return { valid: false, error: 'Solo se permiten archivos JSON' };
+      }
+
+      return { valid: true };
+    } catch {
+      return { valid: false, error: 'Error al validar archivo' };
     }
   }
 }
